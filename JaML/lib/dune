@@ -17,6 +17,7 @@
   Toplevel
   Anf
   Anfconv)
+ (modules_without_implementation Toplevel Anf)
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))
