@@ -1,41 +1,32 @@
-(** Constant type *)
 type const =
-  | CInt of int (** 1 2 3 *)
-  | CBool of bool (** true, false *)
+  | CInt of int
+  | CBool of bool
 [@@deriving show { with_path = false }]
 
-(** Binary operations type *)
 type bin_op =
-  | Add (** a + b *)
-  | Sub (** a - b *)
-  | Div (** a / b *)
-  | Mul (** a * b *)
-  | Xor (** a ^ b *)
-  | And (** a && b *)
-  | Or (** a || b *)
-  | Eq (** a = b *)
-  | NEq (** a <> b *)
-  | Gt (** a > b *)
-  | Lt (** a < b *)
-  | Gte (** a >= b *)
-  | Lte (** a <= b *)
+  | Add
+  | Sub
+  | Div
+  | Mul
+  | Xor
+  | And
+  | Or
+  | Eq
+  | NEq
+  | Gt
+  | Lt
+  | Gte
+  | Lte
 [@@deriving show { with_path = false }]
 
-(** Expression type *)
 type expr =
-  | EConst of const (** An expression for the constata *)
-  | EVar of string (** An expression for the variables *)
+  | EConst of const
+  | EVar of string
   | EBinop of bin_op * expr * expr
-  (** An expression for the binary operations: +, -, *, / ... *)
-  | EApp of expr * expr (** An expression for the function application to the arguments *)
-  | EIfThenElse of expr * expr * expr
-  (** An expression for condition statement: if expr then expr else expr *)
-  | ELet of string * expr (** An expression for let declaration: let id = expr *)
+  | EApp of expr * expr
+  | ELet of string * expr
   | ELetRec of string * expr
-  (** An expression for let rec declaration: let rec id = expr *)
   | ELetIn of string * expr * expr
-  (** An expression for let in declaration: let id = expr in expr *)
   | ELetRecIn of string * expr * expr
-  (** An expression for let rec in declaration: let rec id = expr in expr *)
-  | EFun of expr * expr (** An expression for function: fun expr -> expr *)
+  | EFun of expr * expr
 [@@deriving show { with_path = false }]
