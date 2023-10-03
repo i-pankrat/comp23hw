@@ -16,32 +16,26 @@ type tvalue =
   | GValue of ground_value
   | PValue of poly_value
 
-(* It would be great to remove copy paste with Equal, NotEqual, ...*)
+type 'a poly_binop =
+  | NotEqual of 'a * 'a
+  | Gt of 'a * 'a
+  | Lt of 'a * 'a
+  | Gte of 'a * 'a
+  | Lte of 'a * 'a
+
 type int_binop =
   | Plus of tnumber * tnumber
   | Minus of tnumber * tnumber
   | Slash of tnumber * tnumber
   | Aster of tnumber * tnumber
-  | Equal of tnumber * tnumber
-  | NotEqual of tnumber * tnumber
-  | Gt of tnumber * tnumber
-  | Lt of tnumber * tnumber
-  | Gte of tnumber * tnumber
-  | Lte of tnumber * tnumber
+  | OrderBinop of tnumber poly_binop
 
 type bool_binop =
   | Xor of tboolean * tboolean
   | And of tboolean * tboolean
   | Or of tboolean * tboolean
-  | Equal of tboolean * tboolean
-  | NotEqual of tboolean * tboolean
-  | Gt of tboolean * tboolean
-  | Lt of tboolean * tboolean
-  | Gte of tboolean * tboolean
-  | Lte of tboolean * tboolean
+  | OrderBinop of bool_binop poly_binop
 
-(* TODO: For now it's not ready to implement good typed binary operations
-   because we can express Equal of TBooleand * TInteger *)
 type tbinop =
   | BoolBinop of bool_binop
   | IntBinop of int_binop
