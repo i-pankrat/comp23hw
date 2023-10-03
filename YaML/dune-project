@@ -6,7 +6,7 @@
 
 (license LGPL-2.1-or-later)
 
-(name YAML)
+(name YaML)
 
 (source
  (github username/reponame))
@@ -20,17 +20,16 @@
 (homepage "https://github.com/i-pankrat/comp23hw")
 
 (package
- (name YAML)
- (synopsis "YAML")
- (description "Ya mini language ˶ᵔ ᵕ ᵔ˶")
+ (name YaML)
+ (synopsis "YaML")
+ (description
+  "Ya mini language \203\182\225\181\148 \225\181\149 \225\181\148\203\182")
  (version 0.1)
- (depends 
+ (depends
   ocaml
   dune
   angstrom
   (ppx_inline_test :with-test)
   ppx_expect
   ppx_deriving
-  (ocamlformat :build) 
-  ))
-
+  (ocamlformat :build)))
