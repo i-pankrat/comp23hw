@@ -42,19 +42,6 @@ let unify2 map1 map2 =
     | Add map | Same map -> map)
 ;;
 
-let pp_list helper l sep =
-  let open Stdlib.Format in
-  pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf sep) (fun ppf ty -> helper ppf ty) l
-;;
-
-let pp_pv helper ppf l =
-  let open Stdlib.Format in
-  let c, l = l in
-  match l with
-  | [] -> fprintf ppf "%s" c
-  | _ -> fprintf ppf "%s of %a" c (fun ppf -> pp_list helper ppf " * ") l
-;;
-
 (** Conver binder to letters and print type using letters *)
 let pp_typ_letter ppf ty =
   let rec get_subs subs index = function
@@ -79,7 +66,7 @@ let pp_typ_letter ppf ty =
          let letter = transform_binder v in
          fprintf ppf "%s" letter
        | None -> fprintf ppf "'_%d" n)
-    | Prim s -> pp_print_string ppf s
+    | Prim s -> pp_print_string ppf @@ show_prim s
     | Arrow (l, r) -> fprintf ppf "(%a -> %a)" helper l helper r
   in
   helper ppf ty
@@ -90,6 +77,6 @@ let rec pp_typ_binder ppf =
   let open Stdlib.Format in
   function
   | Tyvar n -> fprintf ppf "'_%d" n
-  | Prim s -> pp_print_string ppf s
+  | Prim s -> pp_print_string ppf @@ show_prim s
   | Arrow (l, r) -> fprintf ppf "(%a -> %a)" pp_typ_binder l pp_typ_binder r
 ;;

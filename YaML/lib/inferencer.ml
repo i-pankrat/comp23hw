@@ -176,7 +176,7 @@ end = struct
 
   let rec unify l r =
     match l, r with
-    | Prim l, Prim r when String.equal l r -> return empty
+    | Prim l, Prim r when equal_prim l r -> return empty
     | Prim _, Prim _ -> fail (`Unification_failed (l, r))
     | Tyvar a, Tyvar b when Int.equal a b -> return empty
     | Tyvar b, t | t, Tyvar b -> singleton b t
@@ -306,8 +306,8 @@ let infer =
     | EVar x -> lookup_env x env
     | EConst const ->
       (match const with
-       | CBool _ -> return (Subst.empty, Prim "bool")
-       | CInt _ -> return (Subst.empty, Prim "int"))
+       | CBool _ -> return (Subst.empty, tybool)
+       | CInt _ -> return (Subst.empty, tyint))
     | EBinop (op, e1, e2) ->
       let* s1, t1 = helper env e1 in
       let* s2, t2 = helper env e2 in
@@ -342,7 +342,7 @@ let infer =
       let* s1, t1 = helper env c in
       let* s2, t2 = helper env th in
       let* s3, t3 = helper env el in
-      let* s4 = unify t1 (Prim "bool") in
+      let* s4 = unify t1 tybool in
       let* s5 = unify t2 t3 in
       let* final_subst = Subst.compose_all [ s5; s4; s3; s2; s1 ] in
       return (final_subst, Subst.apply final_subst t2)
