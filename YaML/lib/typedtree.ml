@@ -1,3 +1,5 @@
+open Typetree
+
 type tboolean =
   | BoolVar of string
   | BoolConst of bool
@@ -42,7 +44,7 @@ type tbinop =
 
 type let_binding_info =
   { name : string
-  ; let_type : string (* TODO: type for types *)
+  ; let_type : ty (* TODO: type for types *)
   }
 
 type texpr =
