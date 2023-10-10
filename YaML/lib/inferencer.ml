@@ -321,7 +321,7 @@ let infer =
          let* s3 = unify t1 tybool in
          let* s4 = unify t2 tybool in
          let* final_subst = Subst.compose_all [ s1; s2; s3; s4 ] in
-         return (final_subst, arrow tyint (arrow tyint tyint))
+         return (final_subst, arrow tybool (arrow tybool tybool))
        | Eq | NEq | Gt | Lt | Gte | Lte ->
          (match t1, t2 with
           | Arrow _, _ | _, Arrow _ -> fail `TodoError
