@@ -24,6 +24,7 @@ type expr =
   | EVar of string
   | EBinop of bin_op * expr * expr
   | EApp of expr * expr
+  | EIfThenElse of expr * expr * expr
   | ELet of string * expr
   | ELetRec of string * expr
   | ELetIn of string * expr * expr
