@@ -489,3 +489,14 @@ let%expect_test _ =
               ))
            )) |}]
 ;;
+
+(* Should not be parsed *)
+let%expect_test _ =
+  interpret_parse show_expr pexpr "let test = 5 5";
+  [%expect {|  |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_expr pexpr "let rec test = 5 5";
+  [%expect {|  |}]
+;;
