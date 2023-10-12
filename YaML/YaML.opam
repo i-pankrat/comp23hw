@@ -2,7 +2,7 @@
 opam-version: "2.0"
 version: "0.1"
 synopsis: "YaML"
-description: "Ya mini language ˶ᵔ ᵕ ᵔ˶"
+description: "Ya mini language"
 maintainer: ["Ilya Pankratov, Maxim Drumov"]
 authors: ["Ilya Pankratov, Maxim Drumov"]
 license: "LGPL-2.1-or-later"
