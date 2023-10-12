@@ -493,10 +493,37 @@ let%expect_test _ =
 (* Should not be parsed *)
 let%expect_test _ =
   interpret_parse show_expr pexpr "let test = 5 5";
-  [%expect {|  |}]
+  [%expect {| (ELet ("test", (EApp ((EConst (CInt 5)), (EConst (CInt 5)))))) |}]
 ;;
 
 let%expect_test _ =
   interpret_parse show_expr pexpr "let rec test = 5 5";
-  [%expect {|  |}]
+  [%expect {| (ELetRec ("test", (EApp ((EConst (CInt 5)), (EConst (CInt 5)))))) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_expr pexpr "let test = fun x -> let x = 5";
+  [%expect {| (ELet ("test", (EFun ((EVar "x"), (ELet ("x", (EConst (CInt 5)))))))) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_expr pexpr "let test = fun x -> let x = 5 in y";
+  [%expect
+    {|
+    (ELet ("test",
+       (EFun ((EVar "x"), (ELetIn ("x", (EConst (CInt 5)), (EVar "y"))))))) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_expr pexpr "let test = fun x -> let x = 5 in y";
+  [%expect
+    {|
+    (ELet ("test",
+       (EFun ((EVar "x"), (ELetIn ("x", (EConst (CInt 5)), (EVar "y"))))))) |}]
+;;
+
+(* It's thought that after fixing the "if" parsing this will be parsed, but it shouldn't be *)
+let%expect_test _ =
+  interpret_parse show_expr pexpr "if (fun x -> x) then 1 else 2";
+  [%expect {| |}]
 ;;
