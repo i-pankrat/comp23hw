@@ -1,3 +1,7 @@
+(** Copyright 2023-2024, Ilya Pankratov, Maxim Drumov *)
+
+(** SPDX-License-Identifier: LGPL-2.1-or-later *)
+
 (** Constant type *)
 type const =
   | CInt of int (** 1 2 3 *)
@@ -23,7 +27,7 @@ type bin_op =
 
 (** Expression type *)
 type expr =
-  | EConst of const (** An expression for the constata *)
+  | EConst of const (** An expression for the constant *)
   | EVar of string (** An expression for the variables *)
   | EBinop of bin_op * expr * expr
   (** An expression for the binary operations: +, -, *, / ... *)
@@ -39,3 +43,6 @@ type expr =
   (** An expression for let rec in declaration: let rec id = expr in expr *)
   | EFun of string * expr (** An expression for function: fun expr -> expr *)
 [@@deriving show { with_path = false }]
+
+(** Statements type *)
+type statements = expr list [@@deriving show { with_path = false }]

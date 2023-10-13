@@ -1,6 +1,13 @@
+(** Copyright 2023-2024, Ilya Pankratov, Maxim Drumov *)
+
+(** SPDX-License-Identifier: LGPL-2.1-or-later *)
+
 open Ast
 open Angstrom
 
+type error = string
+
+let pp_error ppf error = Format.fprintf ppf "%s" error
 let parse_string p s = Angstrom.parse_string ~consume:Consume.All p s
 
 let empty = function
@@ -122,13 +129,13 @@ let fun_args_p = many (parens_or_not var_p)
 let fun_args_p1 = many1 (parens_or_not var_p)
 let efun args body = List.fold_right (fun arg acc -> EFun (arg, acc)) args body
 
-let econd pif pexpr =
+let econd pif expr_p =
   empty
   *> lift3
        (fun i t e -> EIfThenElse (i, t, e))
        (wspaces_str "if" *> pif)
-       (wspaces_str "then" *> pexpr)
-       (wspaces_str "else" *> pexpr)
+       (wspaces_str "then" *> expr_p)
+       (wspaces_str "else" *> expr_p)
 ;;
 
 let efun_p expr_p =
@@ -141,7 +148,7 @@ let efun_p expr_p =
 
 let rec_p = wspaces_str "let" *> option None ((fun r -> Some r) <$> wspaces_str "rec")
 
-let elet_fun pexpr =
+let elet_fun_p expr_p =
   empty
   *> lift4
        (fun opt name args body ->
@@ -152,10 +159,10 @@ let elet_fun pexpr =
        rec_p
        var_p
        fun_args_p
-       (wspaces_str "=" *> pexpr)
+       (wspaces_str "=" *> expr_p)
 ;;
 
-let elet_fun_in pexpr =
+let elet_fun_in_p expr_p =
   let lift5 f p1 p2 p3 p4 p5 = f <$> p1 <*> p2 <*> p3 <*> p4 <*> p5 in
   empty
   *> lift5
@@ -167,8 +174,8 @@ let elet_fun_in pexpr =
        rec_p
        var_p
        fun_args_p
-       (wspaces_str "=" *> pexpr)
-       (wspaces_str "in" *> pexpr)
+       (wspaces_str "=" *> expr_p)
+       (wspaces_str "in" *> expr_p)
 ;;
 
 let pack =
@@ -223,10 +230,10 @@ let pack =
   let lets_parsers pack =
     pack.eapply pack <|> pack.efun pack <|> pack.econdition pack <|> letsin pack
   in
-  let elet pack = fix @@ fun _ -> elet_fun @@ lets_parsers pack in
-  let eletin pack = fix @@ fun _ -> elet_fun_in @@ lets_parsers pack in
-  let eletrec pack = fix @@ fun _ -> elet_fun @@ lets_parsers pack in
-  let eletrecin pack = fix @@ fun _ -> elet_fun_in @@ lets_parsers pack in
+  let elet pack = fix @@ fun _ -> elet_fun_p @@ lets_parsers pack in
+  let eletin pack = fix @@ fun _ -> elet_fun_in_p @@ lets_parsers pack in
+  let eletrec pack = fix @@ fun _ -> elet_fun_p @@ lets_parsers pack in
+  let eletrecin pack = fix @@ fun _ -> elet_fun_in_p @@ lets_parsers pack in
   { evar
   ; econst
   ; econdition
@@ -242,9 +249,10 @@ let pack =
   }
 ;;
 
-let pexpr = pack.expr pack
-let pstatements = sep_by (wspaces_str ";;") pexpr
-let parse program = parse_string pstatements (String.trim program)
+let expr_p = pack.expr pack
+let lets_p = pack.elet pack <|> pack.eletrec pack
+let statements_p = sep_by (wspaces_str ";;" <|> empty) lets_p
+let parse program = parse_string statements_p (String.trim program)
 
 let interpret_parse f p str =
   match parse_string p str with
@@ -273,23 +281,23 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "1 + 5";
+  interpret_parse show_expr expr_p "1 + 5";
   [%expect {|
         (EBinop (Add, (EConst (CInt 1)), (EConst (CInt 5)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "x + 5";
+  interpret_parse show_expr expr_p "x + 5";
   [%expect {| (EBinop (Add, (EVar "x"), (EConst (CInt 5)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "(x + 5)";
+  interpret_parse show_expr expr_p "(x + 5)";
   [%expect {| (EBinop (Add, (EVar "x"), (EConst (CInt 5)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "(x + 5) * 4";
+  interpret_parse show_expr expr_p "(x + 5) * 4";
   [%expect
     {|
     (EBinop (Mul, (EBinop (Add, (EVar "x"), (EConst (CInt 5)))),
@@ -297,7 +305,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "(a + b) * (c - d) * (e / d)";
+  interpret_parse show_expr expr_p "(a + b) * (c - d) * (e / d)";
   [%expect
     {|
         (EBinop (Mul,
@@ -307,32 +315,32 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a > 1";
+  interpret_parse show_expr expr_p "a > 1";
   [%expect {| (EBinop (Gt, (EVar "a"), (EConst (CInt 1)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a >= 1";
+  interpret_parse show_expr expr_p "a >= 1";
   [%expect {| (EBinop (Gte, (EVar "a"), (EConst (CInt 1)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a < 1";
+  interpret_parse show_expr expr_p "a < 1";
   [%expect {| (EBinop (Lt, (EVar "a"), (EConst (CInt 1)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a <= 1";
+  interpret_parse show_expr expr_p "a <= 1";
   [%expect {| (EBinop (Lte, (EVar "a"), (EConst (CInt 1)))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a ^ b";
+  interpret_parse show_expr expr_p "a ^ b";
   [%expect {| (EBinop (Xor, (EVar "a"), (EVar "b"))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a <= 1 && a <> b";
+  interpret_parse show_expr expr_p "a <= 1 && a <> b";
   [%expect
     {|
     (EBinop (And, (EBinop (Lte, (EVar "a"), (EConst (CInt 1)))),
@@ -340,7 +348,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "a <= 1 || a = b";
+  interpret_parse show_expr expr_p "a <= 1 || a = b";
   [%expect
     {|
     (EBinop (Or, (EBinop (Lte, (EVar "a"), (EConst (CInt 1)))),
@@ -348,22 +356,22 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "f x";
+  interpret_parse show_expr expr_p "f x";
   [%expect {| (EApp ((EVar "f"), (EVar "x"))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "let x y = y";
+  interpret_parse show_expr expr_p "let x y = y";
   [%expect {| (ELet ("x", (EFun ("y", (EVar "y"))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "in a then b else c";
+  interpret_parse show_expr expr_p "in a then b else c";
   [%expect {| Error: : char '(' |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "if a > 1 then true else false";
+  interpret_parse show_expr expr_p "if a > 1 then true else false";
   [%expect
     {|
     (EIfThenElse ((EBinop (Gt, (EVar "a"), (EConst (CInt 1)))),
@@ -371,7 +379,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "fun x y z -> x + y - z";
+  interpret_parse show_expr expr_p "fun x y z -> x + y - z";
   [%expect
     {|
     (EFun ("x",
@@ -383,24 +391,24 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "let x y = y * y";
+  interpret_parse show_expr expr_p "let x y = y * y";
   [%expect {| (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "let x = fun y -> y * y";
+  interpret_parse show_expr expr_p "let x = fun y -> y * y";
   [%expect {| (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "let apply f x = f x";
+  interpret_parse show_expr expr_p "let apply f x = f x";
   [%expect
     {|
       (ELet ("apply", (EFun ("f", (EFun ("x", (EApp ((EVar "f"), (EVar "x"))))))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr pexpr "let x y = if y > 0 then y else 0 ";
+  interpret_parse show_expr expr_p "let x y = if y > 0 then y else 0 ";
   [%expect
     {|
     (ELet ("x",
@@ -413,50 +421,64 @@ let%expect_test _ =
 
 let%expect_test _ =
   interpret_parse
-    show_expr
-    pexpr
+    show_statements
+    statements_p
     "let fib n = if n < 1 then 1 else fib (n - 2) + fib (n - 1)";
   [%expect
     {|
-    (ELet ("fib",
-       (EFun ("n",
-          (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
-             (EConst (CInt 1)),
-             (EApp (
-                (EApp ((EVar "fib"),
-                   (EBinop (Add, (EBinop (Sub, (EVar "n"), (EConst (CInt 2)))),
-                      (EVar "fib")))
-                   )),
-                (EBinop (Sub, (EVar "n"), (EConst (CInt 1))))))
-             ))
-          ))
-       )) |}]
+    [(ELet ("fib",
+        (EFun ("n",
+           (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
+              (EConst (CInt 1)),
+              (EApp (
+                 (EApp ((EVar "fib"),
+                    (EBinop (Add, (EBinop (Sub, (EVar "n"), (EConst (CInt 2)))),
+                       (EVar "fib")))
+                    )),
+                 (EBinop (Sub, (EVar "n"), (EConst (CInt 1))))))
+              ))
+           ))
+        ))
+      ] |}]
 ;;
 
 let%expect_test _ =
   interpret_parse
-    show_expr
-    pexpr
-    "let fac n =\n\
-    \    let rec fact n acc = if n < 1 then acc else fact (n-1) (acc * n) in\n\
-    \    fact n 1";
+    show_statements
+    statements_p
+    "let square = fun x -> x * x;;\n    let res = square 5";
   [%expect
     {|
-        (ELet ("fac",
-           (EFun ("n",
-              (ELetRecIn ("fact",
-                 (EFun ("n",
-                    (EFun ("acc",
-                       (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
-                          (EVar "acc"),
-                          (EApp (
-                             (EApp ((EVar "fact"),
-                                (EBinop (Sub, (EVar "n"), (EConst (CInt 1)))))),
-                             (EBinop (Mul, (EVar "acc"), (EVar "n")))))
-                          ))
+    [(ELet ("square", (EFun ("x", (EBinop (Mul, (EVar "x"), (EVar "x")))))));
+      (ELet ("res", (EApp ((EVar "square"), (EConst (CInt 5))))))] |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let fac n =\n\
+    \    let rec fact n acc = if n < 1 then acc else fact (n-1) (acc * n) in\n\
+    \    fact n 1\n\
+    \    let fac5 = fac 5";
+  [%expect
+    {|
+    [(ELet ("fac",
+        (EFun ("n",
+           (ELetRecIn ("fact",
+              (EFun ("n",
+                 (EFun ("acc",
+                    (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
+                       (EVar "acc"),
+                       (EApp (
+                          (EApp ((EVar "fact"),
+                             (EBinop (Sub, (EVar "n"), (EConst (CInt 1)))))),
+                          (EBinop (Mul, (EVar "acc"), (EVar "n")))))
                        ))
-                    )),
-                 (EApp ((EApp ((EVar "fact"), (EVar "n"))), (EConst (CInt 1))))))
-              ))
-           )) |}]
+                    ))
+                 )),
+              (EApp ((EApp ((EVar "fact"), (EVar "n"))), (EConst (CInt 1))))))
+           ))
+        ));
+      (ELet ("fac5", (EApp ((EVar "fac"), (EConst (CInt 5))))))] |}]
 ;;
