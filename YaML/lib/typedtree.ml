@@ -15,8 +15,7 @@ type texpr =
   (** Typed expression for the binary operations *)
   | TApp of texpr * texpr * ty
   (** Typed expression for the function application to the arguments *)
-  | TIfThenElse of texpr * texpr * texpr
-  (** An expression for condition statement: if expr then expr else expr *)
+  | TIfThenElse of texpr * texpr * texpr (** Typed expression for condition statement *)
   | TLet of string * texpr * ty (** Typed expression for let declaration *)
   | TLetRec of string * texpr * ty (** Typed expression for let rec declaration*)
   | TLetIn of string * texpr * texpr * ty (** Typed expression for let in declaration *)
