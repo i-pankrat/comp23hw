@@ -17,9 +17,9 @@ let pp_error ppf : error -> _ = function
     Stdlib.Format.fprintf
       ppf
       "Typechecker error: unification failed on %a and %a"
-      Pprinttypetree.pp_typ_letter
+      Pprinttypetree.pp_ty
       l
-      Pprinttypetree.pp_typ_letter
+      Pprinttypetree.pp_ty
       r
   | _ -> Stdlib.Format.fprintf ppf "TODO"
 ;;
@@ -147,7 +147,7 @@ end = struct
   let pp ppf subst =
     let open Stdlib.Format in
     Map.Poly.iteri subst ~f:(fun ~key ~data ->
-      fprintf ppf "'_%d -> %a@\n" key Pprinttypetree.pp_typ_binder data)
+      fprintf ppf "'_%d -> %s\n" key @@ show_ty data)
   ;;
 
   let empty = Map.Poly.empty
@@ -215,7 +215,7 @@ end = struct
 end
 
 type binder_set = VarSet.t [@@deriving show { with_path = false }]
-type scheme = S of binder_set * ty [@@deriving show { with_path = false }]
+type scheme = S of binder_set * ty
 
 module Scheme = struct
   type t = scheme
@@ -233,8 +233,18 @@ module Scheme = struct
     S (names, Subst.apply s2 ty)
   ;;
 
-  let pp = pp_scheme
+  let pp =
+    let helper ppf =
+      let open Stdlib.Format in
+      let open Pprinttypetree in
+      function
+      | S (set, ty) -> fprintf ppf "S(%s, %a)" (show_binder_set set) pp_ty ty
+    in
+    helper
+  ;;
 end
+
+let pp_scheme = Scheme.pp
 
 type environment = (string * scheme) list
 
@@ -299,87 +309,120 @@ let pp_env subst ppf env =
   TypeEnv.pp ppf env
 ;;
 
-let infer =
+let infer_expr =
   let open Ast in
-  let rec (helper : TypeEnv.t -> Ast.expr -> (Subst.t * ty) R.t) =
+  let rec (helper : TypeEnv.t -> Ast.expr -> (Subst.t * ty * texpr) R.t) =
     fun env -> function
-    | EVar x -> lookup_env x env
+    | EVar x ->
+      let* s, t = lookup_env x env in
+      return (s, t, tvar x t)
     | EConst const ->
       (match const with
-       | CBool _ -> return (Subst.empty, tybool)
-       | CInt _ -> return (Subst.empty, tyint))
+       | CBool _ -> return (Subst.empty, tybool, tconst const tybool)
+       | CInt _ -> return (Subst.empty, tyint, tconst const tyint))
     | EBinop (op, e1, e2) ->
-      let* s1, t1 = helper env e1 in
-      let* s2, t2 = helper env e2 in
+      let* s1, t1, te1 = helper env e1 in
+      let* s2, t2, te2 = helper env e2 in
       (match op with
        | Add | Sub | Div | Mul ->
          let* s3 = unify t1 tyint in
          let* s4 = unify t2 tyint in
          let* final_subst = Subst.compose_all [ s1; s2; s3; s4 ] in
-         return (final_subst, arrow tyint (arrow tyint tyint))
+         return (final_subst, tyint, tbinop op te1 te2 (arrow tyint (arrow tyint tyint)))
        | Xor | And | Or ->
          let* s3 = unify t1 tybool in
          let* s4 = unify t2 tybool in
          let* final_subst = Subst.compose_all [ s1; s2; s3; s4 ] in
-         return (final_subst, arrow tybool (arrow tybool tybool))
-       | Eq | NEq | Gt | Lt | Gte | Lte ->
+         return
+           (final_subst, tybool, tbinop op te1 te2 (arrow tybool (arrow tybool tybool)))
+       | Eq | Neq | Gt | Lt | Gte | Lte ->
          (match t1, t2 with
           | Arrow _, _ | _, Arrow _ -> fail `TodoError
           | _ ->
             let* s3 = unify t1 t2 in
             let final_typ = Subst.apply s3 t1 in
             let* final_subst = Subst.compose_all [ s1; s2; s3 ] in
-            return (final_subst, arrow final_typ (arrow final_typ tybool))))
+            return
+              ( final_subst
+              , tybool
+              , tbinop op te1 te2 (arrow final_typ (arrow final_typ tybool)) )))
     | EApp (e1, e2) ->
-      let* s1, t1 = helper env e1 in
-      let* s2, t2 = helper (TypeEnv.apply s1 env) e2 in
+      let* s1, t1, te1 = helper env e1 in
+      let* s2, t2, te2 = helper (TypeEnv.apply s1 env) e2 in
       let* tv = fresh_var in
       let* s3 = unify (Subst.apply s2 t1) (Arrow (t2, tv)) in
-      let typedres = Subst.apply s3 tv in
       let* final_subst = Subst.compose_all [ s3; s2; s1 ] in
-      return (final_subst, typedres)
+      let typedres = Subst.apply final_subst tv in
+      return (final_subst, typedres, tapp te1 te2 typedres)
     | EIfThenElse (c, th, el) ->
-      let* s1, t1 = helper env c in
-      let* s2, t2 = helper env th in
-      let* s3, t3 = helper env el in
+      let* s1, t1, te1 = helper env c in
+      let* s2, t2, te2 = helper env th in
+      let* s3, t3, te3 = helper env el in
       let* s4 = unify t1 tybool in
       let* s5 = unify t2 t3 in
       let* final_subst = Subst.compose_all [ s5; s4; s3; s2; s1 ] in
-      return (final_subst, Subst.apply final_subst t2)
-    | ELet (_, e) ->
-      let* s, t = helper env e in
-      return (s, t)
+      return (final_subst, Subst.apply final_subst t2, tifthenelse te1 te2 te3)
+    | ELet (name, e) ->
+      let* s, t, te = helper env e in
+      return (s, t, tlet name te t)
     | ELetIn (name, e1, e2) ->
-      let* s1, t1 = helper env e1 in
+      let* s1, t1_typ, te1 = helper env e1 in
       let env2 = TypeEnv.apply s1 env in
-      let t1 = generalize env2 t1 in
-      let* s2, t3 = helper (TypeEnv.extend env2 (name, t1)) e2 in
+      let t1 = generalize env2 t1_typ in
+      let* s2, t3, te2 = helper (TypeEnv.extend env2 (name, t1)) e2 in
       let* final_subst = Subst.compose s1 s2 in
-      return (final_subst, t3)
+      return (final_subst, t3, tletin name te1 te2 t1_typ)
     | ELetRec (name, e) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
-      let* s, t = helper env e in
-      return (s, t)
+      let* s, t, te = helper env e in
+      return (s, t, tletrec name te t)
     | ELetRecIn (name, e1, e2) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
-      let* s1, t1 = helper env e1 in
+      let* s1, t1, te1 = helper env e1 in
       let* s2 = unify (Subst.apply s1 tv) t1 in
       let* s = Subst.compose s1 s2 in
       let env = TypeEnv.apply s env in
       let t2 = generalize env (Subst.apply s tv) in
-      let* s2, t2 = helper TypeEnv.(extend (apply s env) (name, t2)) e2 in
+      let* s2, t2, te2 = helper TypeEnv.(extend (apply s env) (name, t2)) e2 in
       let* final_subst = Subst.compose s s2 in
-      return (final_subst, t2)
+      return (final_subst, t2, tletrecin name te1 te2 t1)
     | EFun (arg, e) ->
-      let* s1, t1 = helper env arg in
-      let* s2, t2 = helper env e in
-      let typedres = Arrow (Subst.apply s2 t1, Subst.apply s1 t2) in
-      let* s = Subst.compose s1 s2 in
-      return (s, typedres)
+      let* tv = fresh_var in
+      let env = TypeEnv.extend env (arg, S (VarSet.empty, tv)) in
+      let* s1, t1, te1 = helper env e in
+      let typedres = Arrow (Subst.apply s1 tv, t1) in
+      return (s1, typedres, tfun arg tv te1 typedres)
   in
   helper
 ;;
 
 let empty : environment = TypeEnv.empty
+
+let fix_typedtree subst =
+  let apply_subst = Subst.apply subst in
+  let rec helper = function
+    | TVar (name, typ) -> tvar name (apply_subst typ)
+    | TBinop (op, e1, e2, typ) -> tbinop op (helper e1) (helper e2) (apply_subst typ)
+    | TApp (e1, e2, typ) -> tapp (helper e1) (helper e2) (apply_subst typ)
+    | TLet (name, e, typ) -> tlet name (helper e) (apply_subst typ)
+    | TLetIn (name, e1, e2, typ) -> tletin name (helper e1) (helper e2) (apply_subst typ)
+    | TLetRec (name, e, typ) -> tletrec name (helper e) (apply_subst typ)
+    | TLetRecIn (name, e1, e2, typ) ->
+      tletrecin name (helper e1) (helper e2) (apply_subst typ)
+    | TFun (Arg (name, arg_typ), e, typ) ->
+      tfun name (apply_subst arg_typ) (helper e) (apply_subst typ)
+    | TIfThenElse (i, t, e) -> tifthenelse (helper i) (helper t) (helper e)
+    | other -> other
+  in
+  helper
+;;
+
+let infer_expr e =
+  let* subst, ty, te = infer_expr empty e in
+  let typed_tree = fix_typedtree subst te in
+  return (subst, ty, typed_tree)
+;;
+
+let infer_expr e = Result.map ~f:Stdlib.Fun.id (run (infer_expr e))
