@@ -5,7 +5,7 @@
 (** Ground types *)
 type prim =
   | Int (** Integer type *)
-  | Bool (** Booleam type *)
+  | Bool (** Boolean type *)
 [@@deriving eq]
 
 let show_prim = function
@@ -15,7 +15,7 @@ let show_prim = function
 
 let pp_prim ppf prim = Stdlib.Format.fprintf ppf "%s" (show_prim prim)
 
-(** Types for expesstion *)
+(** Types for expession *)
 type ty =
   | Tyvar of int (** Represent polymorphic type *)
   | Prim of prim (** Ground types *)
