@@ -4,12 +4,8 @@ type prim =
   | Bool (** Booleam type *)
 [@@deriving eq]
 
-let show_prim = function
-  | Int -> "int"
-  | Bool -> "bool"
-;;
-
-let pp_prim ppf prim = Stdlib.Format.fprintf ppf "%s" (show_prim prim)
+val show_prim : prim -> string
+val pp_prim : Format.formatter -> prim -> unit
 
 (** Types for expesstion *)
 type ty =
@@ -18,10 +14,7 @@ type ty =
   | Arrow of ty * ty (** Type for function *)
 [@@deriving show { with_path = false }]
 
-(* Constructors for ground types *)
-let tyint = Prim Int
-let tybool = Prim Bool
-
-(* Constructors *)
-let arrow l r = Arrow (l, r)
-let var_typ x = Tyvar x
+val tyint : ty
+val tybool : ty
+val arrow : ty -> ty -> ty
+val var_typ : int -> ty
