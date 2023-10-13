@@ -1,5 +1,5 @@
-open Ast
 open Typetree
+open Ast
 
 type arg = Arg of string * ty (** Typed function argument *)
 
@@ -20,13 +20,15 @@ type texpr =
   (** Typed expression for let rec in declaration *)
   | TFun of arg * texpr * ty (** Typed expression for function *)
 
-let tconst c t = TConst (c, t)
-let tvar s t = TVar (s, t)
-let tbinop b e1 e2 t = TBinop (b, e1, e2, t)
-let tapp f a t = TApp (f, a, t)
-let tifthenelse i t e = TIfThenElse (i, t, e)
-let tlet s a t = TLet (s, a, t)
-let tletrec a s t = TLetRec (a, s, t)
-let tletin s a b t = TLetIn (s, a, b, t)
-let tletrecin s a b t = TLetRecIn (s, a, b, t)
-let tfun arg_name arg_type a t = TFun (Arg (arg_name, arg_type), a, t)
+(* Constructors for typed expressions *)
+
+val tconst : Ast.const -> Typetree.ty -> texpr
+val tvar : string -> Typetree.ty -> texpr
+val tbinop : Ast.bin_op -> texpr -> texpr -> Typetree.ty -> texpr
+val tapp : texpr -> texpr -> Typetree.ty -> texpr
+val tifthenelse : texpr -> texpr -> texpr -> texpr
+val tlet : string -> texpr -> Typetree.ty -> texpr
+val tletrec : string -> texpr -> Typetree.ty -> texpr
+val tletin : string -> texpr -> texpr -> Typetree.ty -> texpr
+val tletrecin : string -> texpr -> texpr -> Typetree.ty -> texpr
+val tfun : string -> Typetree.ty -> texpr -> Typetree.ty -> texpr
