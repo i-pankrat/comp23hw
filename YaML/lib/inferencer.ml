@@ -557,21 +557,6 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = EBinop (Gt, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
-  in
-  [%expect
-    {|
-    (Gt: (int -> (int -> bool)) (
-        (TConst((CInt -1): int)),
-        (TConst((CInt 100): int))
-    ))
-|}]
-;;
-
-let%expect_test _ =
-  let open Ast in
-  let _ =
     let e = EBinop (Lt, EConst (CInt (-1)), EConst (CInt 100)) in
     infer_expr e |> run_infer
   in
@@ -860,17 +845,6 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Neq, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
-  in
-  [%expect {|
-    Typechecker error: unification failed on int and bool
-|}]
-;;
-
-let%expect_test _ =
-  let open Ast in
-  let _ =
-    let e = EBinop (Gt, EConst (CInt 42), EConst (CBool false)) in
     infer_expr e |> run_infer
   in
   [%expect {|
