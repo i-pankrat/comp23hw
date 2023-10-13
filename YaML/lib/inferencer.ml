@@ -406,7 +406,7 @@ let infer_expr e =
   return (ty, typed_tree)
 ;;
 
-(** Infer tests **)
+(** Infer tests *)
 let infer_expr e = Result.map ~f:Stdlib.Fun.id (run (infer_expr e))
 
 let run_infer =
@@ -416,7 +416,7 @@ let run_infer =
   | Result.Ok (_, te) -> Stdlib.Format.printf "%a%!" pp_texpr te
 ;;
 
-(** Constants  tests **)
+(** Constants  tests *)
 
 let%expect_test _ =
   let open Ast in
@@ -436,7 +436,7 @@ let%expect_test _ =
   [%expect {| (TConst((CBool false): bool)) |}]
 ;;
 
-(** Variable tests **)
+(** Variable tests *)
 
 let%expect_test _ =
   let open Ast in
@@ -447,7 +447,7 @@ let%expect_test _ =
   [%expect {| Typechecker error: undefined variable 'x'  |}]
 ;;
 
-(** Tests for integer binary operations **)
+(** Tests for integer binary operations *)
 
 let%expect_test _ =
   let open Ast in
@@ -599,7 +599,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Tests for boolean binary operations **)
+(** Tests for boolean binary operations *)
 
 let%expect_test _ =
   let open Ast in
@@ -751,7 +751,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Tests for wrong typed binary operations **)
+(** Tests for wrong typed binary operations *)
 
 let%expect_test _ =
   let open Ast in
@@ -942,7 +942,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Tests for typing condition statement **)
+(** Tests for typing condition statement *)
 
 let%expect_test _ =
   let open Ast in
@@ -1000,7 +1000,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Let tests **)
+(** Let tests *)
 
 let%expect_test _ =
   let open Ast in
@@ -1118,7 +1118,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Application tests **)
+(** Application tests *)
 
 let%expect_test _ =
   let open Ast in
@@ -1217,7 +1217,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Let in tests **)
+(** Let in tests *)
 
 let%expect_test _ =
   let open Ast in
@@ -1241,7 +1241,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Let rec in tests **)
+(** Let rec in tests *)
 
 let%expect_test _ =
   let open Ast in
@@ -1299,7 +1299,7 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Factorial and fibonacci tests**)
+(** Factorial and fibonacci tests *)
 
 let%expect_test _ =
   let open Ast in
