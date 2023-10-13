@@ -10,19 +10,19 @@ type const =
 
 (** Binary operations type *)
 type bin_op =
-  | Add (** a + b *)
-  | Sub (** a - b *)
-  | Div (** a / b *)
-  | Mul (** a * b *)
-  | Xor (** a ^ b *)
-  | And (** a && b *)
-  | Or (** a || b *)
-  | Eq (** a = b *)
-  | NEq (** a <> b *)
-  | Gt (** a > b *)
-  | Lt (** a < b *)
-  | Gte (** a >= b *)
-  | Lte (** a <= b *)
+  | Add
+  | Sub
+  | Div
+  | Mul
+  | Xor
+  | And
+  | Or
+  | Eq
+  | Neq
+  | Gt
+  | Lt
+  | Gte
+  | Lte
 [@@deriving show { with_path = false }]
 
 (** Expression type *)
