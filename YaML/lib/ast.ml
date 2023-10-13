@@ -29,5 +29,5 @@ type expr =
   | ELetRec of string * expr
   | ELetIn of string * expr * expr
   | ELetRecIn of string * expr * expr
-  | EFun of expr * expr
+  | EFun of string * expr
 [@@deriving show { with_path = false }]
