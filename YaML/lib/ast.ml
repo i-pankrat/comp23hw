@@ -12,7 +12,7 @@ type bin_op =
   | And
   | Or
   | Eq
-  | NEq
+  | Neq
   | Gt
   | Lt
   | Gte
