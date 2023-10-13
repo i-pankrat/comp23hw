@@ -20,7 +20,6 @@ let pp_error ppf : error -> _ = function
       l
       Pprinttypetree.pp_ty
       r
-  | _ -> Stdlib.Format.fprintf ppf "TODO"
 ;;
 
 module R : sig
@@ -409,7 +408,7 @@ let infer_expr e = Result.map ~f:Stdlib.Fun.id (run (infer_expr e))
 let run_infer =
   let open Pprinttypedtree in
   function
-  | Result.Error e -> Stdlib.Format.printf "Error: %a%!" pp_error e
+  | Result.Error e -> Stdlib.Format.printf "%a%!" pp_error e
   | Result.Ok (_, te) -> Stdlib.Format.printf "%a%!" pp_texpr te
 ;;
 
@@ -441,7 +440,7 @@ let%expect_test _ =
     let e = EVar "x" in
     infer_expr e |> run_infer
   in
-  [%expect {| Error: Typechecker error: undefined variable 'x'  |}]
+  [%expect {| Typechecker error: undefined variable 'x'  |}]
 ;;
 
 (** Tests for integer binary operations **)
@@ -772,7 +771,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on bool and int
+    Typechecker error: unification failed on bool and int
 |}]
 ;;
 
@@ -783,7 +782,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on bool and int
+    Typechecker error: unification failed on bool and int
 |}]
 ;;
 
@@ -794,7 +793,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on bool and int
+    Typechecker error: unification failed on bool and int
 |}]
 ;;
 
@@ -805,7 +804,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on bool and int
+    Typechecker error: unification failed on bool and int
 |}]
 ;;
 
@@ -816,7 +815,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -827,7 +826,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -838,7 +837,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -849,7 +848,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -860,7 +859,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -871,7 +870,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -882,7 +881,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -893,7 +892,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -904,7 +903,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -915,7 +914,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -1008,7 +1007,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on int and bool
+    Typechecker error: unification failed on int and bool
 |}]
 ;;
 
@@ -1019,7 +1018,7 @@ let%expect_test _ =
     infer_expr e |> run_infer
   in
   [%expect {|
-    Error: Typechecker error: unification failed on bool and int
+    Typechecker error: unification failed on bool and int
 |}]
 ;;
 
