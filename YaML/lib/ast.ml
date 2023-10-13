@@ -18,7 +18,7 @@ type bin_op =
   | And (** a && b *)
   | Or (** a || b *)
   | Eq (** a = b *)
-  | NEq (** a <> b *)
+  | Neq (** a <> b *)
   | Gt (** a > b *)
   | Lt (** a < b *)
   | Gte (** a >= b *)
