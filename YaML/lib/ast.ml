@@ -1,3 +1,7 @@
+(** Copyright 2023-2024, Ilya Pankratov, Maxim Drumov *)
+
+(** SPDX-License-Identifier: LGPL-2.1-or-later *)
+
 (** Constant type *)
 type const =
   | CInt of int (** 1 2 3 *)
@@ -14,7 +18,7 @@ type bin_op =
   | And (** a && b *)
   | Or (** a || b *)
   | Eq (** a = b *)
-  | NEq (** a <> b *)
+  | Neq (** a <> b *)
   | Gt (** a > b *)
   | Lt (** a < b *)
   | Gte (** a >= b *)
@@ -37,5 +41,5 @@ type expr =
   (** An expression for let in declaration: let id = expr in expr *)
   | ELetRecIn of string * expr * expr
   (** An expression for let rec in declaration: let rec id = expr in expr *)
-  | EFun of expr * expr (** An expression for function: fun expr -> expr *)
+  | EFun of string * expr (** An expression for function: fun expr -> expr *)
 [@@deriving show { with_path = false }]
