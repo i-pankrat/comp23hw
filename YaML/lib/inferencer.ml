@@ -27,7 +27,7 @@ let pp_error ppf : error -> _ = function
 module R : sig
   include Monad.Infix
 
-  val bind : 'a t -> f:('a -> 'b t) -> 'b t
+  (* val bind : 'a t -> f:('a -> 'b t) -> 'b t *)
   val return : 'a -> 'a t
   val fail : error -> 'a t
 
@@ -76,11 +76,11 @@ type fresh = int
 module VarSet = struct
   include Stdlib.Set.Make (Int)
 
-  let pp ppf s =
-    Stdlib.Format.fprintf ppf "[ ";
+  (* let pp ppf s =
+     Stdlib.Format.fprintf ppf "[ ";
     iter (Stdlib.Format.fprintf ppf "%d; ") s;
     Stdlib.Format.fprintf ppf "]"
-  ;;
+     ;; *)
 
   let fold_left_m f acc set =
     fold
@@ -122,14 +122,8 @@ let fold_left map ~init ~f =
 module Subst : sig
   type t
 
-  val pp : Stdlib.Format.formatter -> t -> unit
   val empty : t
   val singleton : fresh -> ty -> t R.t
-
-  (** Getting value from substitution. May raise [Not_found] *)
-  val find_exn : fresh -> t -> ty
-
-  val find : fresh -> t -> ty option
   val apply : t -> ty -> ty
   val unify : ty -> ty -> t R.t
 
@@ -144,12 +138,6 @@ end = struct
 
   type t = (fresh, ty) Map.Poly.t
 
-  let pp ppf subst =
-    let open Stdlib.Format in
-    Map.Poly.iteri subst ~f:(fun ~key ~data ->
-      fprintf ppf "'_%d -> %s\n" key @@ show_ty data)
-  ;;
-
   let empty = Map.Poly.empty
   let mapping k v = if Type.occurs_in k v then fail `Occurs_check else return (k, v)
 
@@ -159,7 +147,6 @@ end = struct
   ;;
 
   let find_exn f m = Map.Poly.find_exn m f
-  let find f m = Map.Poly.find m f
   let remove m f = Map.Poly.remove m f
 
   let apply subst =
@@ -214,15 +201,11 @@ end = struct
   ;;
 end
 
-type binder_set = VarSet.t [@@deriving show { with_path = false }]
+type binder_set = VarSet.t
 type scheme = S of binder_set * ty
 
 module Scheme = struct
   type t = scheme
-
-  let occurs_in v = function
-    | S (names, ty) -> (not (VarSet.mem v names)) && Type.occurs_in v ty
-  ;;
 
   let free_vars = function
     | S (names, ty) -> VarSet.diff (Type.free_vars ty) names
@@ -233,18 +216,16 @@ module Scheme = struct
     S (names, Subst.apply s2 ty)
   ;;
 
-  let pp =
-    let helper ppf =
-      let open Stdlib.Format in
-      let open Pprinttypetree in
-      function
-      | S (set, ty) -> fprintf ppf "S(%s, %a)" (show_binder_set set) pp_ty ty
-    in
-    helper
-  ;;
+  (* let pp =
+     let helper ppf =
+     let open Stdlib.Format in
+     let open Pprinttypetree in
+     function
+     | S (set, ty) -> fprintf ppf "S(%s, %a)" (show_binder_set set) pp_ty ty
+     in
+     helper
+     ;; *)
 end
-
-let pp_scheme = Scheme.pp
 
 type environment = (string * scheme) list
 
@@ -261,14 +242,13 @@ module TypeEnv = struct
 
   let apply subst env = List.Assoc.map env ~f:(Scheme.apply subst)
 
-  let pp ppf xs =
+  (* let pp ppf xs =
     Stdlib.Format.fprintf ppf "{| ";
     List.iter xs ~f:(fun (n, s) -> Stdlib.Format.fprintf ppf "%s -> %a; " n pp_scheme s);
     Stdlib.Format.fprintf ppf "|}%!"
-  ;;
+  ;; *)
 
-  let find_exn name xs = List.Assoc.find_exn ~equal:String.equal xs name
-  let available_bindings env = List.Assoc.map env ~f:(fun (S (_, ty)) -> ty)
+  (* let available_bindings env = List.Assoc.map env ~f:(fun (S (_, ty)) -> ty) *)
 end
 
 open R
@@ -302,12 +282,12 @@ let lookup_env var env =
     return (Subst.empty, ans)
 ;;
 
-let pp_env subst ppf env =
-  let env : TypeEnv.t =
-    List.map ~f:(fun (k, S (args, v)) -> k, S (args, Subst.apply subst v)) env
-  in
-  TypeEnv.pp ppf env
-;;
+(* let pp_env subst ppf env =
+   let env : TypeEnv.t =
+   List.map ~f:(fun (k, S (args, v)) -> k, S (args, Subst.apply subst v)) env
+   in
+   TypeEnv.pp ppf env
+   ;; *)
 
 let infer_expr =
   let open Ast in
@@ -422,18 +402,17 @@ let fix_typedtree subst =
 let infer_expr e =
   let* subst, ty, te = infer_expr empty e in
   let typed_tree = fix_typedtree subst te in
-  return (subst, ty, typed_tree)
+  return (ty, typed_tree)
 ;;
 
-let infer_expr e = Result.map ~f:Stdlib.Fun.id (run (infer_expr e))
-
 (** Infer tests **)
+let infer_expr e = Result.map ~f:Stdlib.Fun.id (run (infer_expr e))
 
 let run_infer =
   let open Pprinttypedtree in
   function
   | Result.Error e -> Stdlib.Format.printf "Error: %a%!" pp_error e
-  | Result.Ok (_, _, te) -> Stdlib.Format.printf "%a%!" pp_texpr te
+  | Result.Ok (_, te) -> Stdlib.Format.printf "%a%!" pp_texpr te
 ;;
 
 (** Constants  tests **)
@@ -1288,11 +1267,6 @@ let%expect_test _ =
 ;;
 
 (** Let rec in tests **)
-
-let sumn x =
-  let rec helper x = if x = 1 then 1 else x + helper (x - 1) in
-  helper x
-;;
 
 let%expect_test _ =
   let open Ast in
