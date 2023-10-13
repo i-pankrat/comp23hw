@@ -2,7 +2,6 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-(** Constant type *)
 type const =
   | CInt of int (** 1 2 3 *)
   | CBool of bool (** true, false *)

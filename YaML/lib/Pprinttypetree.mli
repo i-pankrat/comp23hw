@@ -1,3 +1,7 @@
+(** Copyright 2023-2024, Ilya Pankratov, Maxim Drumov *)
+
+(** SPDX-License-Identifier: LGPL-2.1-or-later *)
+
 (** Get subs from type. Using for beautiful printing. *)
 val get_ty_subs
   :  (int, int, 'a) Base.Map.t
