@@ -22,8 +22,7 @@
 (package
  (name YaML)
  (synopsis "YaML")
- (description
-  "Ya mini language \203\182\225\181\148 \225\181\149 \225\181\148\203\182")
+ (description "Ya mini language")
  (version 0.1)
  (depends
   ocaml
