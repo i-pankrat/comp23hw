@@ -19,7 +19,7 @@ let is_letter = function
 ;;
 
 let keywords = function
-  | "let" | "rec" | "in" | "fun" | "if" | "then" | "else" -> true
+  | "let" | "rec" | "in" | "fun" | "if" | "then" | "else" | "true" | "false" -> true
   | _ -> false
 ;;
 
@@ -38,7 +38,7 @@ let var_p =
   if keywords v
   then fail "Variables cannot be keyword"
   else if is_digit @@ String.get v 0
-  then fail "The first character must be a character"
+  then fail "The first character must be a letter"
   else return v
 ;;
 
