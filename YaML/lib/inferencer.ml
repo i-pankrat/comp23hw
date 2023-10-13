@@ -6,7 +6,6 @@ type error =
   [ `Occurs_check
   | `No_variable of string
   | `Unification_failed of ty * ty
-  | `TodoError
   ]
 
 let pp_error ppf : error -> _ = function
@@ -317,7 +316,6 @@ let infer_expr =
            (final_subst, tybool, tbinop op te1 te2 (arrow tybool (arrow tybool tybool)))
        | Eq | Neq | Gt | Lt | Gte | Lte ->
          (match t1, t2 with
-          | Arrow _, _ | _, Arrow _ -> fail `TodoError
           | _ ->
             let* s3 = unify t1 t2 in
             let final_typ = Subst.apply s3 t1 in

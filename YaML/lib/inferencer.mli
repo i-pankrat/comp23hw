@@ -4,7 +4,6 @@ type error =
   [ `Occurs_check
   | `No_variable of string
   | `Unification_failed of Typetree.ty * Typetree.ty
-  | `TodoError
   ]
 
 (** Pretty printer for errors *)
