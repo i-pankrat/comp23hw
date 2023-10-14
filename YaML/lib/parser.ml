@@ -99,7 +99,7 @@ let ebinop_p expr =
   let and_p = helper (string "&&") And in
   let or_p = helper (string "||") Or in
   let eq_p = helper (char '=') Eq in
-  let neq_p = helper (string "<>") NEq in
+  let neq_p = helper (string "<>") Neq in
   let gt_p = helper (char '>') Gt in
   let lt_p = helper (char '<') Lt in
   let gte_p = helper (string ">=") Gte in
@@ -344,7 +344,7 @@ let%expect_test _ =
   [%expect
     {|
     (EBinop (And, (EBinop (Lte, (EVar "a"), (EConst (CInt 1)))),
-       (EBinop (NEq, (EVar "a"), (EVar "b"))))) |}]
+       (EBinop (Neq, (EVar "a"), (EVar "b"))))) |}]
 ;;
 
 let%expect_test _ =
