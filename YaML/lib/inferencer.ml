@@ -1000,8 +1000,8 @@ let%expect_test _ =
   in
   [%expect
     {|
-    (TIfThenElse(
-        (TConst((CBool true): bool)),
+    (TIfThenElse: int
+        ((TConst((CBool true): bool)),
         (TConst((CInt 4): int)),
         (TConst((CInt 5): int))
     ))
@@ -1018,8 +1018,8 @@ let%expect_test _ =
   in
   [%expect
     {|
-    (TIfThenElse(
-        (TConst((CBool true): bool)),
+    (TIfThenElse: bool
+        ((TConst((CBool true): bool)),
         (TConst((CBool true): bool)),
         (TConst((CBool false): bool))
     ))
@@ -1329,8 +1329,8 @@ let%expect_test _ =
                 helper: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
-                    (TIfThenElse(
-                        (Eq: (int -> (int -> bool)) (
+                    (TIfThenElse: int
+                        ((Eq: (int -> (int -> bool)) (
                             (x: int),
                             (TConst((CInt 1): int))
                         )),
@@ -1383,8 +1383,8 @@ let%expect_test _ =
         fact: (int -> int),
         (TFun: (int -> int) (
             (n: int),
-            (TIfThenElse(
-                (Eq: (int -> (int -> bool)) (
+            (TIfThenElse: int
+                ((Eq: (int -> (int -> bool)) (
                     (n: int),
                     (TConst((CInt 1): int))
                 )),
@@ -1448,8 +1448,8 @@ let%expect_test _ =
                     (n: int),
                     (TFun: (int -> int) (
                         (acc: int),
-                        (TIfThenElse(
-                            (Lt: (int -> (int -> bool)) (
+                        (TIfThenElse: int
+                            ((Lt: (int -> (int -> bool)) (
                                 (n: int),
                                 (TConst((CInt 1): int))
                             )),
