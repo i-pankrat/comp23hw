@@ -12,5 +12,5 @@ type error =
 (** Pretty printer for errors *)
 val pp_error : Format.formatter -> error -> unit
 
-(** Infer type of expession *)
-val infer_expr : Ast.expr -> (Typetree.ty * Typedtree.texpr, error) result
+(** Infer type of statements *)
+val infer : Ast.statements -> (Typedtree.tbinding list, error) result
