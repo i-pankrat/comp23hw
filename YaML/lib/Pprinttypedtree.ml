@@ -139,11 +139,11 @@ let pp_texpr_with_subs ppf depth subs texpr =
     | TIfThenElse (i, t, e, typ) ->
       fprintf
         ppf
-        "(TIfThenElse(%a : %a%a, %a%a, %a%a%a))"
-        space
-        depth
+        "(TIfThenElse: %a%a(%a, %a%a, %a%a%a))"
         pp_ty
         typ
+        space
+        depth
         pp
         i
         space
@@ -178,7 +178,7 @@ let pp_tbinding_complete ppf = function
     let pp_expr ppf = pp_texpr_with_subs ppf 2 subs in
     fprintf
       ppf
-      "(%s(%a%s: %a, %a%a%a))"
+      "(%s(%a%s: %a, %a%a\n))"
       (show_binding binding)
       space
       1
@@ -189,8 +189,6 @@ let pp_tbinding_complete ppf = function
       1
       pp_expr
       e
-      space
-      1
 ;;
 
 let pp_tbinding_brief ppf = function
