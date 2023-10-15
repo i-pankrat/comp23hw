@@ -6,6 +6,10 @@ open Typedtree
 open Base
 open Stdlib.Format
 
+type mode =
+  | Brief
+  | Complete
+
 let get_texpr_subst =
   let rec helper subs index = function
     | TVar (_, typ) -> Pprinttypetree.get_ty_subs subs index typ
@@ -159,7 +163,7 @@ let pp_texpr_with_subs ppf depth subs texpr =
 
 let pp_texpr ppf texpr =
   let subs, _ = get_texpr_subst texpr in
-  pp_texpr_with_subs ppf 1 subs
+  pp_texpr_with_subs ppf 1 subs texpr
 ;;
 
 let show_binding = function
@@ -167,7 +171,7 @@ let show_binding = function
   | TLet _ -> "TLet"
 ;;
 
-let pp_tbinding ppf = function
+let pp_tbinding_complete ppf = function
   | (TLetRec (name, e, typ) | TLet (name, e, typ)) as binding ->
     let subs, _ = get_texpr_subst e in
     let pp_ty = Pprinttypetree.pp_ty_with_subs (Some subs) in
@@ -189,8 +193,19 @@ let pp_tbinding ppf = function
       1
 ;;
 
-let pp_statements =
-  pp_print_list
-    ~pp_sep:(fun ppf _ -> fprintf ppf ";")
-    (fun ppf binding -> pp_tbinding ppf binding)
+let pp_tbinding_brief ppf = function
+  | TLetRec (name, _, typ) | TLet (name, _, typ) ->
+    let pp_ty = Pprinttypetree.pp_ty_with_subs None in
+    fprintf ppf "%s %a" name pp_ty typ
+;;
+
+let pp_tbinding = pp_tbinding_complete
+
+let pp_statements sep mode =
+  let pp =
+    match mode with
+    | Brief -> pp_tbinding_brief
+    | Complete -> pp_tbinding_complete
+  in
+  pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf sep) (fun ppf binding -> pp ppf binding)
 ;;
