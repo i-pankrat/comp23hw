@@ -23,12 +23,12 @@ type texpr =
   | TFun of arg * texpr * ty (** Typed expression for function *)
 
 (** Typed binding type *)
-type tbindings =
+type tbinding =
   | TLet of string * texpr * ty (** Typed expression for let declaration *)
   | TLetRec of string * texpr * ty (** Typed expression for let rec declaration *)
 
 (** Typed statements type *)
-type tstatements = tbindings list
+type tstatements = tbinding list
 
 (** Typed texpr constructors *)
 
@@ -41,7 +41,7 @@ let tletin s a b t = TLetIn (s, a, b, t)
 let tletrecin s a b t = TLetRecIn (s, a, b, t)
 let tfun arg_name arg_type a t = TFun (Arg (arg_name, arg_type), a, t)
 
-(** tbindings constructors *)
+(** tbinding constructors *)
 
 let slet n e t = TLet (n, e, t)
 let sletrec n e t = TLetRec (n, e, t)

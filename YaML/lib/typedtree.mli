@@ -23,13 +23,13 @@ type texpr =
   | TFun of arg * texpr * Typetree.ty (** Typed expression for function *)
 
 (** Typed binding type *)
-type tbindings =
+type tbinding =
   | TLet of string * texpr * Typetree.ty (** Typed expression for let declaration *)
   | TLetRec of string * texpr * Typetree.ty
   (** Typed expression for let rec declaration *)
 
 (** Typed statements type *)
-type tstatements = tbindings list
+type tstatements = tbinding list
 
 (** Constructors for typed expressions *)
 
@@ -44,5 +44,5 @@ val tfun : string -> Typetree.ty -> texpr -> Typetree.ty -> texpr
 
 (** tbindings constructors *)
 
-val tlet : string -> texpr -> Typetree.ty -> tbindings
-val tletrec : string -> texpr -> Typetree.ty -> tbindings
+val tlet : string -> texpr -> Typetree.ty -> tbinding
+val tletrec : string -> texpr -> Typetree.ty -> tbinding
