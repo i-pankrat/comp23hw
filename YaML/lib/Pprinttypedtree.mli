@@ -2,6 +2,10 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
+type mode =
+  | Brief
+  | Complete
+
 (** Pretty printer for typed expession *)
 val pp_texpr : Format.formatter -> Typedtree.texpr -> unit
 
@@ -9,4 +13,9 @@ val pp_texpr : Format.formatter -> Typedtree.texpr -> unit
 val pp_tbinding : Format.formatter -> Typedtree.tbinding -> unit
 
 (** Pretty printer for typed statements *)
-val pp_statements : Format.formatter -> Typedtree.tstatements -> unit
+val pp_statements
+  :  (unit, Format.formatter, unit) format
+  -> mode
+  -> Format.formatter
+  -> Typedtree.tbinding list
+  -> unit
