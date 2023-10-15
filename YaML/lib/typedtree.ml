@@ -43,5 +43,5 @@ let tfun arg_name arg_type a t = TFun (Arg (arg_name, arg_type), a, t)
 
 (** tbinding constructors *)
 
-let slet n e t = TLet (n, e, t)
-let sletrec n e t = TLetRec (n, e, t)
+let tlet n e t = TLet (n, e, t)
+let tletrec n e t = TLetRec (n, e, t)
