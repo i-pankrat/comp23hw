@@ -42,7 +42,7 @@ let read_whole_file filename = In_channel.with_open_bin filename In_channel.inpu
 let () =
   match YamlCLIArgs.parse () with
   | { YamlCLIArgs.infer_type; filename } when infer_type && filename == "" ->
-    let input = read_line () in
+    let input = In_channel.input_all In_channel.stdin in
     infer_types input
   | { YamlCLIArgs.infer_type; filename } when infer_type && filename != "" ->
     if Sys.file_exists filename
