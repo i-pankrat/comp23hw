@@ -31,6 +31,7 @@ let keywords = function
 ;;
 
 let empty = take_while is_whitespace
+let empty1 = take_while1 is_whitespace
 let wspaces_p p = empty *> p <* empty
 let wspace_l p = empty *> p
 let wspaces_char ch = wspace_l @@ char ch
@@ -121,7 +122,7 @@ let eapp_p expr_p1 expr_p2 =
          let eapp = List.fold_left (fun a b -> EApp (a, b)) expr arg in
          eapp)
        expr_p1
-       (many1 @@ expr_p2)
+       (many1 @@ (empty1 *> expr_p2))
 ;;
 
 let fun_args_p = many (parens_or_not var_p)
