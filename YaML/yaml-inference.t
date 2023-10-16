@@ -1,9 +1,10 @@
 Show help
   $ ./yaml.exe -help
-  yaml -i -f <file>
+  yaml -i -d -f <file>
   Compile program from stdin
     -i Infer only the types for the input, do not use the compiler.
     -f Read program from specified file, not from the stdin.
+    -d Disable occurrence checking during type checking
     -help  Display this list of options
     --help  Display this list of options
 Fixed point combinators
@@ -44,3 +45,10 @@ Fibonacci
   fib_z5: int
 Occurs check is disabled
   $ ./yaml.exe -i -d -f ./tests/occurs-check-disable.ya
+  fix: (('a -> 'a) -> 'a)
+  fac_open: ((int -> int) -> (int -> int))
+  fib_open: ((int -> int) -> (int -> int))
+  fac: (int -> int)
+  fib: (int -> int)
+  fac5: int
+  fib5: int
