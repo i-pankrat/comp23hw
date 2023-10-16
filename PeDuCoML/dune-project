@@ -1,0 +1,20 @@
+(lang dune 3.4)
+
+(name PeDuCoML)
+
+(generate_opam_files true)
+
+(source
+ (github airh4ck/comp23hw))
+
+(authors "Danila Pechenev" , "Ilya Dudnikov")
+
+(maintainers "Danila Pechenev" , "Ilya Dudnikov")
+
+(license LGPL-2.1)
+
+(package
+ (name PeDuCoML)
+ (synopsis "PeDuCoML")
+ (description "PeDuCoML -- a MiniML Compiler")
+ (depends ocaml dune ppx_expect ppx_deriving angstrom bisect_ppx))
