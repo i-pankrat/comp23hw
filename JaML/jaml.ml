@@ -2,7 +2,7 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-open Yaml_lib
+open Jaml_lib
 open Format
 open Result
 
@@ -13,7 +13,7 @@ module YamlCLIArgs = struct
     ; occurs_check : bool
     }
 
-  let usage = "yaml -i -d -f <file>\nCompile program from stdin"
+  let usage = "jaml -i -d -f <file>\nCompile program from stdin"
 
   let parse () =
     let infer = ref false in

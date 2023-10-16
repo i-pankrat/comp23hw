@@ -1,6 +1,6 @@
 (library
- (name yaml_lib)
- (public_name YaML.Lib)
+ (name jaml_lib)
+ (public_name JaML.Lib)
  (modules
   Ast
   Parser

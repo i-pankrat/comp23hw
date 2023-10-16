@@ -1,0 +1,22 @@
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A -w -3-9-32-34-58)))
+ (release
+  (flags
+   (:standard -warn-error -A -w -58))))
+
+(executable
+ (name jaml)
+ (public_name jaml)
+ (modules Jaml)
+ (libraries JaML.Lib stdio))
+
+(cram
+ (deps
+  ./tests/factorial.ja
+  ./tests/fibonacci.ja
+  ./tests/combinators.ja
+  ./tests/occurs-check-disable.ja
+  ./jaml.exe
+  %{bin:jaml}))
