@@ -12,6 +12,12 @@ type error =
   | `Unification_failed of ty * ty
   ]
 
+type occurs_check_mode =
+  | Enable
+  | Disable
+
+let mode = ref Disable
+
 let pp_error ppf : error -> _ = function
   | `Occurs_check -> Stdlib.Format.fprintf ppf "Typechecker error: occurs check failed"
   | `No_variable s ->
@@ -148,7 +154,12 @@ end = struct
      ;; *)
 
   let empty = Map.Poly.empty
-  let mapping k v = if Type.occurs_in k v then fail `Occurs_check else return (k, v)
+
+  let mapping k v =
+    match !mode with
+    | Enable -> if Type.occurs_in k v then fail `Occurs_check else return (k, v)
+    | Disable -> return (k, v)
+  ;;
 
   let singleton k v =
     let* f, t = mapping k v in
@@ -451,7 +462,14 @@ let infer_statements (bindings : Ast.statements) : tbinding list t =
 let infer_type infer_fun s = Result.map ~f:Stdlib.Fun.id (run (infer_fun s))
 let infer_expr = infer_type infer_expr
 let infer_statements = infer_type infer_statements
-let infer = infer_statements
+
+let infer (stms : Ast.statements) (check_mode : occurs_check_mode)
+  : (Typedtree.tbinding list, error) result
+  =
+  mode := check_mode;
+  (* :) *)
+  infer_statements stms
+;;
 
 let run_infer_expr =
   let open Pprinttypedtree in
