@@ -9,8 +9,12 @@ type error =
   | `Unification_failed of Typetree.ty * Typetree.ty
   ]
 
+type occurs_check_mode =
+  | Enable
+  | Disable
+
 (** Pretty printer for errors *)
 val pp_error : Format.formatter -> error -> unit
 
 (** Infer type of statements *)
-val infer : Ast.statements -> (Typedtree.tbinding list, error) result
+val infer : Ast.statements -> occurs_check_mode -> (Typedtree.tbinding list, error) result
