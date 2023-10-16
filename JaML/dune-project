@@ -30,6 +30,6 @@
   angstrom
   (ppx_inline_test :with-test)
   ppx_expect
-  ppx_deriving
+  ppx_deriving.show
   bisect_ppx
   (ocamlformat :build)))
