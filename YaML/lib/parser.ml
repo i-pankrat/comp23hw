@@ -459,17 +459,11 @@ let%expect_test _ =
   interpret_parse
     show_statements
     statements_p
-    "let square = fun x -> x + x  let res = square x";
+    "let square = fun x -> x * x  let square5 = square 5";
   [%expect
     {|
-    [(ELet ("square", (EFun ("x", (EBinop (Add, (EVar "x"), (EVar "x")))))));
-      (ELet ("res", (EApp ((EVar "square"), (EVar "x")))))]|}]
-;;
-
-let%expect_test _ =
-  interpret_parse show_statements statements_p "let square = f x";
-  [%expect {|
-    [(ELet ("square", (EApp ((EVar "f"), (EVar "x")))))]|}]
+    [(ELet ("square", (EFun ("x", (EBinop (Mul, (EVar "x"), (EVar "x")))))));
+      (ELet ("square5", (EApp ((EVar "square"), (EConst (CInt 5))))))]|}]
 ;;
 
 let%expect_test _ =
@@ -477,7 +471,7 @@ let%expect_test _ =
     show_statements
     statements_p
     "let fac n =\n\
-    \    let rec fact n acc = if n < 1 then acc else fact (n - 1) (acc * n) in\n\
+    \    let rec fact n acc = if n < 1 then acc else fact (n-1) (acc * n) in\n\
     \    fact n 1\n\
     \    let fac5 = fac 5";
   [%expect
