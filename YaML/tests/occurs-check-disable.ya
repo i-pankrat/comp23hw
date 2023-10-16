@@ -1,0 +1,10 @@
+let fix f = (fun x -> f (x x)) (fun y -> f (y y))
+
+let fac_open self n = if n <= 1 then 1 else n * (self (n - 1))
+let fib_open self n = if n < 3 then 1 else self (n - 1) + self (n - 2)
+
+let fac = fix fac_open
+let fib = fix fib_open
+
+let fac5 = fac 5
+let fib5 = fib 6
