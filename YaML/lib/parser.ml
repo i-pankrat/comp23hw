@@ -500,3 +500,48 @@ let%expect_test _ =
         ));
       (ELet ("fac5", (EApp ((EVar "fac"), (EConst (CInt 5))))))] |}]
 ;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let rec fix f = f (fix f)";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ("f", (EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f")))))))))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let rec fix f eta = f (fix f) eta";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ("f",
+           (EFun ("eta",
+              (EApp ((EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f"))))),
+                 (EVar "eta")))
+              ))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let fix f = (fun x -> f (x x)) (fun y -> f (y y))";
+  [%expect
+    {|
+    [(ELet ("fix",
+        (EFun ("f",
+           (EApp (
+              (EFun ("x", (EApp ((EVar "f"), (EApp ((EVar "x"), (EVar "x"))))))),
+              (EFun ("y", (EApp ((EVar "f"), (EApp ((EVar "y"), (EVar "y")))))))
+              ))
+           ))
+        ))
+      ]
+   |}]
+;;
