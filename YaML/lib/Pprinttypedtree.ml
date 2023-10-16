@@ -193,8 +193,8 @@ let pp_tbinding_complete ppf = function
 
 let pp_tbinding_brief ppf = function
   | TLetRec (name, _, typ) | TLet (name, _, typ) ->
-    let pp_ty = Pprinttypetree.pp_ty_with_subs None in
-    fprintf ppf "%s %a" name pp_ty typ
+    let pp_ty = Pprinttypetree.pp_ty in
+    fprintf ppf "%s: %a" name pp_ty typ
 ;;
 
 let pp_tbinding = pp_tbinding_complete
