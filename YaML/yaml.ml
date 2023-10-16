@@ -25,7 +25,7 @@ module YamlCLIArgs = struct
     in
     let anon _ = () in
     Arg.parse specs anon usage;
-    { infer_type = !infer; filename = !file; occurs_check = !occurs_check_flag }
+    { infer_type = !infer; filename = !file; occurs_check = not !occurs_check_flag }
   ;;
 end
 
