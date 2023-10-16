@@ -6,7 +6,7 @@
 
 (license LGPL-2.1-or-later)
 
-(name YaML)
+(name JaML)
 
 (source
  (github username/reponame))
@@ -20,9 +20,9 @@
 (homepage "https://github.com/i-pankrat/comp23hw")
 
 (package
- (name YaML)
- (synopsis "YaML")
- (description "Ya mini language")
+ (name JaML)
+ (synopsis "JaML")
+ (description "Ja mini language")
  (version 0.1)
  (depends
   ocaml
