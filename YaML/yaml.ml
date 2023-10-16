@@ -6,23 +6,26 @@ module YamlCLIArgs = struct
   type t =
     { infer_type : bool
     ; filename : string
+    ; occurs_check : bool
     }
 
-  let usage = "yaml -i -f <file>\nCompile program from stdin"
+  let usage = "yaml -i -d -f <file>\nCompile program from stdin"
 
   let parse () =
     let infer = ref false in
+    let occurs_check_flag = ref true in
     let file = ref "" in
     let specs =
       [ ( "-i"
         , Arg.Set infer
         , "Infer only the types for the input, do not use the compiler." )
       ; "-f", Set_string file, "Read program from specified file, not from the stdin."
+      ; "-d", Set occurs_check_flag, "Disable occurrence checking during type checking"
       ]
     in
     let anon _ = () in
     Arg.parse specs anon usage;
-    { infer_type = !infer; filename = !file }
+    { infer_type = !infer; filename = !file; occurs_check = !occurs_check_flag }
   ;;
 end
 
@@ -34,11 +37,15 @@ let pp_error ppf = function
 
 let pp_statements = Pprinttypedtree.pp_statements "\n" Pprinttypedtree.Brief
 
-let infer_types input =
+let flag_to_occurs_check_mode flag =
+  if flag then Inferencer.Enable else Inferencer.Disable
+;;
+
+let infer_types input mode =
   let parsed = Parser.parse input in
   match parsed with
   | Ok statements ->
-    (match Inferencer.infer statements with
+    (match Inferencer.infer statements mode with
      | Ok typed_statements -> printf "%a\n" pp_statements typed_statements
      | Error err -> printf "%a\n" Inferencer.pp_error err)
   | Error err -> printf "%a\n" Parser.pp_error err
@@ -55,8 +62,9 @@ let read_input filename =
 
 let () =
   let args = YamlCLIArgs.parse () in
+  let mode = flag_to_occurs_check_mode args.occurs_check in
   match read_input args.filename with
-  | Ok input when input != "" && args.infer_type -> infer_types input
+  | Ok input when input != "" && args.infer_type -> infer_types input mode
   | Ok input when input != "" && not args.infer_type ->
     printf "compilation does not support yet"
   | Ok _ -> printf "empty input"
