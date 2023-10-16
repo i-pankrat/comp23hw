@@ -391,8 +391,10 @@ let infer_binding env =
   | ELetRec (name, e) ->
     let* tv = fresh_var in
     let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
-    let* s, t, te = infer_expr env e in
-    return (s, t, tletrec name te t)
+    let* s1, t, te = infer_expr env e in
+    let* s2 = unify (Subst.apply s1 tv) t in
+    let* funal_subst = Subst.compose s1 s2 in
+    return (funal_subst, t, tletrec name te t)
 ;;
 
 let fix_typedtree subst =
