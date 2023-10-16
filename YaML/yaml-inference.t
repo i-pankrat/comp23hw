@@ -42,3 +42,5 @@ Fibonacci
   fib_z: (int -> int)
   fib_y5: int
   fib_z5: int
+Occurs check is disabled
+  $ ./yaml.exe -i -d -f ./tests/occurs-check-disable.ya

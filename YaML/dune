@@ -17,5 +17,6 @@
   ./tests/factorial.ya
   ./tests/fibonacci.ya
   ./tests/combinators.ya
+  ./tests/occurs-check-disable.ya
   ./yaml.exe
   %{bin:yaml}))
