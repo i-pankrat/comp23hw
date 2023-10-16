@@ -9,10 +9,10 @@ let fac_tailrec n =
 let fac_tailrec5 = fac_tailrec 5
 
 let fact_cps n =
-  let rec hellper acc count k =
+  let rec helper acc count k =
     if count = n then k acc
-    else hellper (acc * (count + 1)) (count + 1) k
+    else helper (acc * (count + 1)) (count + 1) k
   in
-  hellper 1 0 (fun x -> x)
+  helper 1 0 (fun x -> x)
 
 let fact_cps10 = fact_cps 10
