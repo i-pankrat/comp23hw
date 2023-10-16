@@ -4,11 +4,9 @@ let rec fib n =
 let fib10 = fib 10
 
 let fib_tailrec n =
-  let rec helper a b count =
-    if count = n then a
-    else helper b (a + b) (count + 1)
-  in
-  if n <= 0 then 0 else helper 0 1
+  let rec helper n a b = if n <= 1 then a else helper (n - 1) b (a + b) in
+  helper n 0 1
+;;
 
 let fib10 = fib_tailrec 10
 
