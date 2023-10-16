@@ -467,7 +467,6 @@ let infer (stms : Ast.statements) (check_mode : occurs_check_mode)
   : (Typedtree.tbinding list, error) result
   =
   mode := check_mode;
-  (* :) *)
   infer_statements stms
 ;;
 
