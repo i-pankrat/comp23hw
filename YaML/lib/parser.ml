@@ -31,6 +31,7 @@ let keywords = function
 ;;
 
 let empty = take_while is_whitespace
+let empty1 = take_while1 is_whitespace
 let wspaces_p p = empty *> p <* empty
 let wspace_l p = empty *> p
 let wspaces_char ch = wspace_l @@ char ch
@@ -121,7 +122,7 @@ let eapp_p expr_p1 expr_p2 =
          let eapp = List.fold_left (fun a b -> EApp (a, b)) expr arg in
          eapp)
        expr_p1
-       (many1 @@ expr_p2)
+       (many1 @@ (empty1 *> expr_p2))
 ;;
 
 let fun_args_p = many (parens_or_not var_p)
@@ -458,17 +459,11 @@ let%expect_test _ =
   interpret_parse
     show_statements
     statements_p
-    "let square = fun x -> x + x  let res = square x";
+    "let square = fun x -> x * x  let square5 = square 5";
   [%expect
     {|
-    [(ELet ("square", (EFun ("x", (EBinop (Add, (EVar "x"), (EVar "x")))))));
-      (ELet ("res", (EApp ((EVar "square"), (EVar "x")))))]|}]
-;;
-
-let%expect_test _ =
-  interpret_parse show_statements statements_p "let square = f x";
-  [%expect {|
-    [(ELet ("square", (EApp ((EVar "f"), (EVar "x")))))]|}]
+    [(ELet ("square", (EFun ("x", (EBinop (Mul, (EVar "x"), (EVar "x")))))));
+      (ELet ("square5", (EApp ((EVar "square"), (EConst (CInt 5))))))]|}]
 ;;
 
 let%expect_test _ =
@@ -476,7 +471,7 @@ let%expect_test _ =
     show_statements
     statements_p
     "let fac n =\n\
-    \    let rec fact n acc = if n < 1 then acc else fact (n - 1) (acc * n) in\n\
+    \    let rec fact n acc = if n < 1 then acc else fact (n-1) (acc * n) in\n\
     \    fact n 1\n\
     \    let fac5 = fac 5";
   [%expect
@@ -499,4 +494,49 @@ let%expect_test _ =
            ))
         ));
       (ELet ("fac5", (EApp ((EVar "fac"), (EConst (CInt 5))))))] |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let rec fix f = f (fix f)";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ("f", (EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f")))))))))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let rec fix f eta = f (fix f) eta";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ("f",
+           (EFun ("eta",
+              (EApp ((EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f"))))),
+                 (EVar "eta")))
+              ))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let fix f = (fun x -> f (x x)) (fun y -> f (y y))";
+  [%expect
+    {|
+    [(ELet ("fix",
+        (EFun ("f",
+           (EApp (
+              (EFun ("x", (EApp ((EVar "f"), (EApp ((EVar "x"), (EVar "x"))))))),
+              (EFun ("y", (EApp ((EVar "f"), (EApp ((EVar "y"), (EVar "y")))))))
+              ))
+           ))
+        ))
+      ]
+   |}]
 ;;
