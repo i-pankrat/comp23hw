@@ -49,4 +49,4 @@ type bindings =
 [@@deriving show { with_path = false }]
 
 (** Statements type *)
-type statements = Binding of bindings list [@@deriving show { with_path = false }]
+type statements = bindings list [@@deriving show { with_path = false }]
