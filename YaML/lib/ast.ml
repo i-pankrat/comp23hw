@@ -34,9 +34,6 @@ type expr =
   | EApp of expr * expr (** An expression for the function application to the arguments *)
   | EIfThenElse of expr * expr * expr
   (** An expression for condition statement: if expr then expr else expr *)
-  | ELet of string * expr (** An expression for let declaration: let id = expr *)
-  | ELetRec of string * expr
-  (** An expression for let rec declaration: let rec id = expr *)
   | ELetIn of string * expr * expr
   (** An expression for let in declaration: let id = expr in expr *)
   | ELetRecIn of string * expr * expr
@@ -44,5 +41,12 @@ type expr =
   | EFun of string * expr (** An expression for function: fun expr -> expr *)
 [@@deriving show { with_path = false }]
 
+(** Binding type *)
+type bindings =
+  | ELet of string * expr (** An expression for let declaration: let id = expr *)
+  | ELetRec of string * expr
+  (** An expression for let rec declaration: let rec id = expr *)
+[@@deriving show { with_path = false }]
+
 (** Statements type *)
-type statements = expr list [@@deriving show { with_path = false }]
+type statements = bindings list [@@deriving show { with_path = false }]

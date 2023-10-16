@@ -10,7 +10,7 @@ type error = string
 let pp_error ppf error = Format.fprintf ppf "%s" error
 let parse_string p s = Angstrom.parse_string ~consume:Consume.All p s
 
-let empty = function
+let is_whitespace = function
   | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
   | _ -> false
 ;;
@@ -30,9 +30,11 @@ let keywords = function
   | _ -> false
 ;;
 
-let empty = take_while empty
+let empty = take_while is_whitespace
+let empty1 = take_while1 is_whitespace
 let wspaces_p p = empty *> p <* empty
-let wspaces_char ch = wspaces_p @@ char ch
+let wspace_l p = empty *> p
+let wspaces_char ch = wspace_l @@ char ch
 let wspaces_str str = wspaces_p @@ string_ci str
 let parens p = wspaces_char '(' *> p <* wspaces_char ')'
 let parens_or_not p = p <|> parens p
@@ -50,19 +52,20 @@ let var_p =
 ;;
 
 let sign_p =
-  wspaces_char '-' *> return (-1)
-  <|> wspaces_char '+' *> return 1
-  <|> wspaces_str "" *> return 1
+  empty
+  *> (wspaces_char '-' *> return (-1)
+      <|> wspaces_char '+' *> return 1
+      <|> wspaces_str "" *> return 1)
 ;;
 
 let cint_p =
-  wspaces_p
-  @@ lift2 (fun sign num -> cint (int_of_string num * sign)) sign_p (take_while1 is_digit)
+  empty
+  *> lift2 (fun sign num -> cint (int_of_string num * sign)) sign_p (take_while1 is_digit)
 ;;
 
 let cbool_p =
-  wspaces_p
-  @@ lift (fun b -> cbool @@ bool_of_string b) (wspaces_str "false" <|> wspaces_str "true")
+  empty
+  *> lift (fun b -> cbool @@ bool_of_string b) (wspaces_str "false" <|> wspaces_str "true")
 ;;
 
 let chainl1 e op =
@@ -74,14 +77,11 @@ type edispatch =
   { evar : edispatch -> expr t
   ; econst : edispatch -> expr t
   ; econdition : edispatch -> expr t
-  ; elet : edispatch -> expr t
   ; eletin : edispatch -> expr t
-  ; eletrec : edispatch -> expr t
   ; eletrecin : edispatch -> expr t
   ; ebinop : edispatch -> expr t
   ; efun : edispatch -> expr t
   ; eapply : edispatch -> expr t
-  ; eapply_cond : edispatch -> expr t
   ; expr : edispatch -> expr t
   }
 
@@ -115,14 +115,14 @@ let ebinop_p expr =
   xor_op
 ;;
 
-let eapp_p expr_p =
+let eapp_p expr_p1 expr_p2 =
   empty
   *> lift2
        (fun expr arg ->
          let eapp = List.fold_left (fun a b -> EApp (a, b)) expr arg in
          eapp)
-       expr_p
-       (many (empty *> expr_p))
+       expr_p1
+       (many1 @@ (empty1 *> expr_p2))
 ;;
 
 let fun_args_p = many (parens_or_not var_p)
@@ -179,79 +179,86 @@ let elet_fun_in_p expr_p =
 ;;
 
 let pack =
-  let econst _ = econst_p in
-  let evar _ = evar_p in
-  let lets pack = pack.elet pack <|> pack.eletrec pack in
+  let econst pack = fix @@ fun _ -> econst_p <|> parens @@ pack.econst pack in
+  let evar pack = fix @@ fun _ -> evar_p <|> parens @@ pack.evar pack in
   let letsin pack = pack.eletin pack <|> pack.eletrecin pack in
-  let eapply_parse_cond pack =
-    pack.ebinop pack <|> parens (pack.econdition pack <|> pack.eapply pack)
-  in
-  let eapply_parse pack = eapply_parse_cond pack <|> parens @@ pack.efun pack in
   let expr pack =
-    letsin pack
-    <|> lets pack
-    <|> pack.econdition pack
+    pack.ebinop pack
     <|> pack.eapply pack
+    <|> pack.econdition pack
     <|> pack.efun pack
+    <|> letsin pack
   in
   let econdition pack =
     fix
     @@ fun _ ->
     let econd_parser =
-      parens_or_not
-        (pack.ebinop pack
-         <|> letsin pack
-         <|> pack.econdition pack
-         <|> pack.eapply_cond pack)
+      pack.ebinop pack
+      <|> parens
+            (pack.ebinop pack
+             <|> letsin pack
+             <|> pack.eapply pack
+             <|> pack.econdition pack)
     in
-    econd econd_parser (pack.expr pack)
+    econd econd_parser (pack.expr pack) <|> parens @@ pack.econdition pack
   in
   let ebinop pack =
     fix
     @@ fun _ ->
     let ebinop_parse =
-      parens (pack.econdition pack <|> pack.ebinop pack <|> pack.eapply pack)
-      <|> pack.econst pack
+      letsin pack
+      <|> pack.eapply pack
+      <|> parens @@ pack.econdition pack
+      <|> parens @@ pack.ebinop pack
       <|> pack.evar pack
+      <|> pack.econst pack
     in
-    parens_or_not @@ ebinop_p ebinop_parse
+    ebinop_p ebinop_parse <|> parens @@ pack.ebinop pack
   in
   let efun pack =
-    parens_or_not
-    @@ fix
+    fix
     @@ fun _ ->
     let efun_parse =
-      letsin pack <|> pack.econdition pack <|> pack.eapply pack <|> pack.efun pack
+      pack.ebinop pack
+      <|> pack.eapply pack
+      <|> pack.econdition pack
+      <|> pack.efun pack
+      <|> letsin pack
     in
-    efun_p efun_parse
+    efun_p efun_parse <|> parens @@ pack.efun pack
   in
-  let eapply_cond pack = fix @@ fun _ -> eapp_p @@ eapply_parse_cond pack in
-  let eapply pack = fix @@ fun _ -> eapp_p @@ eapply_parse pack in
-  let lets_parsers pack =
-    pack.eapply pack <|> pack.efun pack <|> pack.econdition pack <|> letsin pack
+  let eapply pack =
+    fix
+    @@ fun _ ->
+    let eapply_fun pack =
+      pack.evar pack
+      <|> parens
+            (pack.econdition pack <|> pack.efun pack <|> pack.eapply pack <|> letsin pack)
+    in
+    let eapply_parse pack =
+      parens
+        (pack.ebinop pack
+         <|> pack.econdition pack
+         <|> pack.eapply pack
+         <|> pack.efun pack
+         <|> letsin pack)
+      <|> pack.evar pack
+      <|> pack.econst pack
+    in
+    eapp_p (eapply_fun pack) (eapply_parse pack) <|> parens @@ pack.eapply pack
   in
-  let elet pack = fix @@ fun _ -> elet_fun_p @@ lets_parsers pack in
-  let eletin pack = fix @@ fun _ -> elet_fun_in_p @@ lets_parsers pack in
-  let eletrec pack = fix @@ fun _ -> elet_fun_p @@ lets_parsers pack in
-  let eletrecin pack = fix @@ fun _ -> elet_fun_in_p @@ lets_parsers pack in
-  { evar
-  ; econst
-  ; econdition
-  ; elet
-  ; eletin
-  ; eletrec
-  ; eletrecin
-  ; ebinop
-  ; efun
-  ; eapply
-  ; eapply_cond
-  ; expr
-  }
+  let eletin pack =
+    fix @@ fun _ -> elet_fun_in_p @@ pack.expr pack <|> parens @@ pack.eletin pack
+  in
+  let eletrecin pack =
+    fix @@ fun _ -> elet_fun_in_p @@ pack.expr pack <|> parens @@ pack.eletrecin pack
+  in
+  { evar; econst; ebinop; econdition; efun; eletin; eletrecin; eapply; expr }
 ;;
 
-let expr_p = pack.expr pack
-let lets_p = pack.elet pack <|> pack.eletrec pack
-let statements_p = sep_by (wspaces_str ";;" <|> empty) lets_p
+let expr_p = wspaces_p @@ pack.expr pack
+let bindings_p = elet_fun_p expr_p
+let statements_p = sep_by (wspaces_str ";;" <|> empty) bindings_p
 let parse program = parse_string statements_p (String.trim program)
 
 let interpret_parse f p str =
@@ -361,7 +368,7 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr expr_p "let x y = y";
+  interpret_parse show_bindings bindings_p "let x y = y";
   [%expect {| (ELet ("x", (EFun ("y", (EVar "y"))))) |}]
 ;;
 
@@ -391,24 +398,30 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr expr_p "let x y = y * y";
+  interpret_parse show_bindings bindings_p "let x y = y * y";
+  [%expect {|
+    (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_bindings bindings_p "let x y = y * y";
   [%expect {| (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr expr_p "let x = fun y -> y * y";
+  interpret_parse show_bindings bindings_p "let x = fun y -> y * y";
   [%expect {| (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr expr_p "let apply f x = f x";
+  interpret_parse show_bindings bindings_p "let apply f x = f x";
   [%expect
     {|
       (ELet ("apply", (EFun ("f", (EFun ("x", (EApp ((EVar "f"), (EVar "x"))))))))) |}]
 ;;
 
 let%expect_test _ =
-  interpret_parse show_expr expr_p "let x y = if y > 0 then y else 0 ";
+  interpret_parse show_bindings bindings_p "let x y = if y > 0 then y else 0";
   [%expect
     {|
     (ELet ("x",
@@ -423,19 +436,19 @@ let%expect_test _ =
   interpret_parse
     show_statements
     statements_p
-    "let fib n = if n < 1 then 1 else fib (n - 2) + fib (n - 1)";
+    "let rec fib n = if n < 1 then 1 else fib (n - 2) + fib (n - 1)";
   [%expect
     {|
-    [(ELet ("fib",
+    [(ELetRec ("fib",
         (EFun ("n",
            (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
               (EConst (CInt 1)),
-              (EApp (
+              (EBinop (Add,
                  (EApp ((EVar "fib"),
-                    (EBinop (Add, (EBinop (Sub, (EVar "n"), (EConst (CInt 2)))),
-                       (EVar "fib")))
-                    )),
-                 (EBinop (Sub, (EVar "n"), (EConst (CInt 1))))))
+                    (EBinop (Sub, (EVar "n"), (EConst (CInt 2)))))),
+                 (EApp ((EVar "fib"),
+                    (EBinop (Sub, (EVar "n"), (EConst (CInt 1))))))
+                 ))
               ))
            ))
         ))
@@ -446,11 +459,11 @@ let%expect_test _ =
   interpret_parse
     show_statements
     statements_p
-    "let square = fun x -> x * x;;\n    let res = square 5";
+    "let square = fun x -> x * x  let square5 = square 5";
   [%expect
     {|
     [(ELet ("square", (EFun ("x", (EBinop (Mul, (EVar "x"), (EVar "x")))))));
-      (ELet ("res", (EApp ((EVar "square"), (EConst (CInt 5))))))] |}]
+      (ELet ("square5", (EApp ((EVar "square"), (EConst (CInt 5))))))]|}]
 ;;
 
 let%expect_test _ =
@@ -481,4 +494,49 @@ let%expect_test _ =
            ))
         ));
       (ELet ("fac5", (EApp ((EVar "fac"), (EConst (CInt 5))))))] |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let rec fix f = f (fix f)";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ("f", (EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f")))))))))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let rec fix f eta = f (fix f) eta";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ("f",
+           (EFun ("eta",
+              (EApp ((EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f"))))),
+                 (EVar "eta")))
+              ))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let fix f = (fun x -> f (x x)) (fun y -> f (y y))";
+  [%expect
+    {|
+    [(ELet ("fix",
+        (EFun ("f",
+           (EApp (
+              (EFun ("x", (EApp ((EVar "f"), (EApp ((EVar "x"), (EVar "x"))))))),
+              (EFun ("y", (EApp ((EVar "f"), (EApp ((EVar "y"), (EVar "y")))))))
+              ))
+           ))
+        ))
+      ]
+   |}]
 ;;
