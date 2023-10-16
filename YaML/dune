@@ -13,4 +13,9 @@
  (libraries YaML.Lib stdio))
 
 (cram
- (deps ./tests/factorial.ya ./tests/fibonacci.ya ./yaml.exe %{bin:yaml}))
+ (deps
+  ./tests/factorial.ya
+  ./tests/fibonacci.ya
+  ./tests/combinators.ya
+  ./yaml.exe
+  %{bin:yaml}))

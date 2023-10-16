@@ -1,0 +1,2 @@
+let rec fix_y f = f (fix_y f)
+let rec fix_z f x = f (fix_z f) x

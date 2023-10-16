@@ -28,3 +28,14 @@ let fib_cps n =
   helper 0 1 0 (fun x -> x)
 
 let fib_cps10 = fib_cps 10
+
+let rec fix_y f = f (fix_y f)
+let rec fix_z f x = f (fix_z f) x
+
+let fib_open self n = if n < 3 then 1 else self (n - 1) + self (n - 2)
+
+let fib_y = fix_y fib_open
+let fib_z = fix_z fib_open
+
+let fib_y5 = fib_y 5
+let fib_z5 = fib_z 5
