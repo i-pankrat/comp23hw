@@ -26,7 +26,19 @@ Factorial
   fix_z_fac5: int
 Fibonacci
   $ ./yaml.exe -i -f ./tests/fibonacci.ya
-  Typechecker error: unification failed on int and (int -> int)
+  fib: (int -> int)
+  fib10: int
+  fib_tailrec: (int -> int)
+  fib10: int
+  fib_cps: (int -> int)
+  fib_cps10: int
+  fix_y: (('a -> 'a) -> 'a)
+  fix_z: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))
+  fib_open: ((int -> int) -> (int -> int))
+  fib_y: (int -> int)
+  fib_z: (int -> int)
+  fib_y5: int
+  fib_z5: int
 Occurs check is disabled
   $ ./yaml.exe -i -d -f ./tests/occurs-check-disable.ya
   fix: (('a -> 'a) -> 'a)
