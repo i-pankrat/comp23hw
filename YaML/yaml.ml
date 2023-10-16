@@ -1,5 +1,6 @@
 open Yaml_lib
 open Format
+open Result
 
 module YamlCLIArgs = struct
   type t =
@@ -7,7 +8,7 @@ module YamlCLIArgs = struct
     ; filename : string
     }
 
-  let usage = "yaml [-i <only-infer-type>] [-f <file>]\nCompile program from stdin"
+  let usage = "yaml -i -f <file>\nCompile program from stdin"
 
   let parse () =
     let infer = ref false in
@@ -25,6 +26,12 @@ module YamlCLIArgs = struct
   ;;
 end
 
+type errors = FileDoesNotExist of string
+
+let pp_error ppf = function
+  | FileDoesNotExist file -> fprintf ppf "file '%s' does not exist" file
+;;
+
 let pp_statements = Pprinttypedtree.pp_statements "\n" Pprinttypedtree.Brief
 
 let infer_types input =
@@ -32,23 +39,26 @@ let infer_types input =
   match parsed with
   | Ok statements ->
     (match Inferencer.infer statements with
-     | Ok typed_statements -> printf "%a!" pp_statements typed_statements
-     | Error err -> printf "%a!" Inferencer.pp_error err)
-  | Error err -> printf "%a!" Parser.pp_error err
+     | Ok typed_statements -> printf "%a\n" pp_statements typed_statements
+     | Error err -> printf "%a\n" Inferencer.pp_error err)
+  | Error err -> printf "%a\n" Parser.pp_error err
 ;;
 
-let read_whole_file filename = In_channel.with_open_bin filename In_channel.input_all
+let read_input filename =
+  if filename != ""
+  then
+    if Sys.file_exists filename
+    then Ok (In_channel.with_open_bin filename In_channel.input_all)
+    else Error (FileDoesNotExist filename)
+  else Ok (In_channel.input_all In_channel.stdin)
+;;
 
 let () =
-  match YamlCLIArgs.parse () with
-  | { YamlCLIArgs.infer_type; filename } when infer_type && filename == "" ->
-    let input = In_channel.input_all In_channel.stdin in
-    infer_types input
-  | { YamlCLIArgs.infer_type; filename } when infer_type && filename != "" ->
-    if Sys.file_exists filename
-    then (
-      let input = read_whole_file filename in
-      infer_types input)
-    else printf "File %s does not exist" filename
-  | _ -> printf "Сompilation is not currently implemented"
+  let args = YamlCLIArgs.parse () in
+  match read_input args.filename with
+  | Ok input when input != "" && args.infer_type -> infer_types input
+  | Ok input when input != "" && not args.infer_type ->
+    printf "compilation does not support yet"
+  | Ok _ -> printf "empty input"
+  | Error err -> printf "%a\n" pp_error err
 ;;
