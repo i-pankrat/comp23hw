@@ -1481,3 +1481,68 @@ let%expect_test _ =
     ))
 |}]
 ;;
+
+let%expect_test _ =
+  let open Ast in
+  let _ =
+    let e =
+      [ ELetRec ("fix", EFun ("f", EApp (EVar "f", EApp (EVar "fix", EVar "f")))) ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLetRec(
+        fix: (('a -> 'a) -> 'a),
+        (TFun: (('a -> 'a) -> 'a) (
+            (f: ('a -> 'a)),
+            (TApp: 'a (
+                (f: ('a -> 'a)),
+                (TApp: 'a (
+                    (fix: (('a -> 'a) -> 'a)),
+                    (f: ('a -> 'a))
+                ))
+            ))
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Ast in
+  let _ =
+    let e =
+      [ ELetRec
+          ( "fix"
+          , EFun
+              ( "f"
+              , EFun
+                  ("eta", EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "eta"))
+              ) )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLetRec(
+        fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)),
+        (TFun: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)) (
+            (f: (('a -> 'b) -> ('a -> 'b))),
+            (TFun: ('a -> 'b) (
+                (eta: 'a),
+                (TApp: 'b (
+                    (TApp: ('a -> 'b) (
+                        (f: (('a -> 'b) -> ('a -> 'b))),
+                        (TApp: ('a -> 'b) (
+                            (fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))),
+                            (f: (('a -> 'b) -> ('a -> 'b)))
+                        ))
+                    )),
+                    (eta: 'a)
+                ))
+            ))
+        ))
+    ))
+|}]
+;;
