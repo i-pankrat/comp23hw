@@ -31,5 +31,4 @@
   (ppx_inline_test :with-test)
   ppx_expect
   ppx_deriving
-  bisect_ppx
   (ocamlformat :build)))

@@ -2,7 +2,6 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-(** Constant type *)
 type const =
   | CInt of int (** 1 2 3 *)
   | CBool of bool (** true, false *)
@@ -10,19 +9,19 @@ type const =
 
 (** Binary operations type *)
 type bin_op =
-  | Add (** a + b *)
-  | Sub (** a - b *)
-  | Div (** a / b *)
-  | Mul (** a * b *)
-  | Xor (** a ^ b *)
-  | And (** a && b *)
-  | Or (** a || b *)
-  | Eq (** a = b *)
-  | Neq (** a <> b *)
-  | Gt (** a > b *)
-  | Lt (** a < b *)
-  | Gte (** a >= b *)
-  | Lte (** a <= b *)
+  | Add
+  | Sub
+  | Div
+  | Mul
+  | Xor
+  | And
+  | Or
+  | Eq
+  | Neq
+  | Gt
+  | Lt
+  | Gte
+  | Lte
 [@@deriving show { with_path = false }]
 
 (** Expression type *)
@@ -37,8 +36,7 @@ type expr =
   | ELetIn of string * expr * expr
   (** An expression for let in declaration: let id = expr in expr *)
   | ELetRecIn of string * expr * expr
-  (** An expression for let rec in declaration: let rec id = expr in expr *)
-  | EFun of string * expr (** An expression for function: fun id -> expr *)
+  | EFun of string * expr
 [@@deriving show { with_path = false }]
 
 (** Binding type *)
