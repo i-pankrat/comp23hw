@@ -1,0 +1,20 @@
+let rec fac n = if n <= 1 then 1 else n * fac (n - 1)
+
+let fac10 = fac 10
+
+let fac_tailrec n =
+  let rec fact n acc = if n < 1 then acc else fact (n - 1) (acc * n) in
+  fact n 1
+
+let fac_tailrec5 = fac_tailrec 5
+
+let rec fix_y f = f (fix_y f)
+let rec fix_z f x = f (fix_z f) x
+
+let fac_open self n = if n <= 1 then 1 else n * (self (n - 1))
+
+let fix_y_fac = fix_y fac_open
+let fix_z_fac = fix_z fac_open
+
+let fix_y_fac5 = fix_y_fac 5
+let fix_z_fac5 = fix_z_fac 5

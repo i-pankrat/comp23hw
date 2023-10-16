@@ -15,21 +15,33 @@ type texpr =
   (** Typed expression for the binary operations *)
   | TApp of texpr * texpr * ty
   (** Typed expression for the function application to the arguments *)
-  | TIfThenElse of texpr * texpr * texpr (** Typed expression for condition statement *)
-  | TLet of string * texpr * ty (** Typed expression for let declaration *)
-  | TLetRec of string * texpr * ty (** Typed expression for let rec declaration*)
+  | TIfThenElse of texpr * texpr * texpr * ty
+  (** Typed expression for condition statement *)
   | TLetIn of string * texpr * texpr * ty (** Typed expression for let in declaration *)
   | TLetRecIn of string * texpr * texpr * ty
   (** Typed expression for let rec in declaration *)
   | TFun of arg * texpr * ty (** Typed expression for function *)
 
+(** Typed binding type *)
+type tbinding =
+  | TLet of string * texpr * ty (** Typed expression for let declaration *)
+  | TLetRec of string * texpr * ty (** Typed expression for let rec declaration *)
+
+(** Typed statements type *)
+type tstatements = tbinding list
+
+(** Typed texpr constructors *)
+
 let tconst c t = TConst (c, t)
 let tvar s t = TVar (s, t)
 let tbinop b e1 e2 t = TBinop (b, e1, e2, t)
 let tapp f a t = TApp (f, a, t)
-let tifthenelse i t e = TIfThenElse (i, t, e)
-let tlet s a t = TLet (s, a, t)
-let tletrec a s t = TLetRec (a, s, t)
+let tifthenelse i t e ty = TIfThenElse (i, t, e, ty)
 let tletin s a b t = TLetIn (s, a, b, t)
 let tletrecin s a b t = TLetRecIn (s, a, b, t)
 let tfun arg_name arg_type a t = TFun (Arg (arg_name, arg_type), a, t)
+
+(** tbinding constructors *)
+
+let tlet n e t = TLet (n, e, t)
+let tletrec n e t = TLetRec (n, e, t)

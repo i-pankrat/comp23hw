@@ -12,6 +12,12 @@ type error =
   | `Unification_failed of ty * ty
   ]
 
+type occurs_check_mode =
+  | Enable
+  | Disable
+
+let mode = ref Disable
+
 let pp_error ppf : error -> _ = function
   | `Occurs_check -> Stdlib.Format.fprintf ppf "Typechecker error: occurs check failed"
   | `No_variable s ->
@@ -134,14 +140,26 @@ module Subst : sig
 
   val compose_all : t list -> t R.t
   val remove : t -> fresh -> t
+  (* val pp : Format.formatter -> t -> unit *)
 end = struct
   open R
   open R.Syntax
 
   type t = (fresh, ty) Map.Poly.t
 
+  (* let pp ppf subst =
+     let open Format in
+     Map.Poly.iteri subst ~f:(fun ~key ~data ->
+     fprintf ppf "'_%d -> %a@\n" key (Pprinttypetree.pp_ty_with_subs None) data)
+     ;; *)
+
   let empty = Map.Poly.empty
-  let mapping k v = if Type.occurs_in k v then fail `Occurs_check else return (k, v)
+
+  let mapping k v =
+    match !mode with
+    | Enable -> if Type.occurs_in k v then fail `Occurs_check else return (k, v)
+    | Disable -> return (k, v)
+  ;;
 
   let singleton k v =
     let* f, t = mapping k v in
@@ -342,10 +360,10 @@ let infer_expr =
       let* s4 = unify t1 tybool in
       let* s5 = unify t2 t3 in
       let* final_subst = Subst.compose_all [ s5; s4; s3; s2; s1 ] in
-      return (final_subst, Subst.apply final_subst t2, tifthenelse te1 te2 te3)
-    | ELet (name, e) ->
-      let* s, t, te = helper env e in
-      return (s, t, tlet name te t)
+      return
+        ( final_subst
+        , Subst.apply final_subst t2
+        , tifthenelse te1 te2 te3 (Subst.apply final_subst t2) )
     | ELetIn (name, e1, e2) ->
       let* s1, t1_typ, te1 = helper env e1 in
       let env2 = TypeEnv.apply s1 env in
@@ -353,11 +371,6 @@ let infer_expr =
       let* s2, t3, te2 = helper (TypeEnv.extend env2 (name, t1)) e2 in
       let* final_subst = Subst.compose s1 s2 in
       return (final_subst, t3, tletin name te1 te2 t1_typ)
-    | ELetRec (name, e) ->
-      let* tv = fresh_var in
-      let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
-      let* s, t, te = helper env e in
-      return (s, t, tletrec name te t)
     | ELetRecIn (name, e1, e2) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
@@ -379,7 +392,21 @@ let infer_expr =
   helper
 ;;
 
-let empty : environment = TypeEnv.empty
+let infer_binding env =
+  let open Ast in
+  let open Typedtree in
+  function
+  | ELet (name, e) ->
+    let* s, t, te = infer_expr env e in
+    return (s, t, tlet name te t)
+  | ELetRec (name, e) ->
+    let* tv = fresh_var in
+    let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
+    let* s1, t, te = infer_expr env e in
+    let* s2 = unify (Subst.apply s1 tv) t in
+    let* funal_subst = Subst.compose s1 s2 in
+    return (funal_subst, t, tletrec name te t)
+;;
 
 let fix_typedtree subst =
   let apply_subst = Subst.apply subst in
@@ -387,18 +414,19 @@ let fix_typedtree subst =
     | TVar (name, typ) -> tvar name (apply_subst typ)
     | TBinop (op, e1, e2, typ) -> tbinop op (helper e1) (helper e2) (apply_subst typ)
     | TApp (e1, e2, typ) -> tapp (helper e1) (helper e2) (apply_subst typ)
-    | TLet (name, e, typ) -> tlet name (helper e) (apply_subst typ)
     | TLetIn (name, e1, e2, typ) -> tletin name (helper e1) (helper e2) (apply_subst typ)
-    | TLetRec (name, e, typ) -> tletrec name (helper e) (apply_subst typ)
     | TLetRecIn (name, e1, e2, typ) ->
       tletrecin name (helper e1) (helper e2) (apply_subst typ)
     | TFun (Arg (name, arg_typ), e, typ) ->
       tfun name (apply_subst arg_typ) (helper e) (apply_subst typ)
-    | TIfThenElse (i, t, e) -> tifthenelse (helper i) (helper t) (helper e)
+    | TIfThenElse (i, t, e, typ) ->
+      tifthenelse (helper i) (helper t) (helper e) (apply_subst typ)
     | other -> other
   in
   helper
 ;;
+
+let empty : environment = TypeEnv.empty
 
 let infer_expr e =
   let* subst, ty, te = infer_expr empty e in
@@ -406,15 +434,59 @@ let infer_expr e =
   return (ty, typed_tree)
 ;;
 
-(** Infer tests *)
-let infer_expr e = Result.map ~f:Stdlib.Fun.id (run (infer_expr e))
+let fix_typedtree subst =
+  let apply_subst = Subst.apply subst in
+  function
+  | TLet (name, e, typ) -> tlet name (fix_typedtree subst e) (apply_subst typ)
+  | TLetRec (name, e, typ) -> tletrec name (fix_typedtree subst e) (apply_subst typ)
+;;
 
-let run_infer =
+let infer_statements (bindings : Ast.statements) : tbinding list t =
+  let open Ast in
+  let* _, tbindings =
+    List.fold
+      ~init:(return (empty, []))
+      ~f:(fun env_binding ->
+        function
+        | (ELet (name, _) | ELetRec (name, _)) as new_binding ->
+          let* env, tbindings = env_binding in
+          let* subst, ty, tbinding = infer_binding env new_binding in
+          return
+            ( TypeEnv.extend env (name, S (VarSet.empty, ty))
+            , tbindings @ [ fix_typedtree subst tbinding ] ))
+      bindings
+  in
+  return tbindings
+;;
+
+let infer_type infer_fun s = Result.map ~f:Stdlib.Fun.id (run (infer_fun s))
+let infer_expr = infer_type infer_expr
+let infer_statements = infer_type infer_statements
+
+let infer (stms : Ast.statements) (check_mode : occurs_check_mode)
+  : (Typedtree.tbinding list, error) result
+  =
+  mode := check_mode;
+  infer_statements stms
+;;
+
+let run_infer_expr =
   let open Pprinttypedtree in
   function
   | Result.Error e -> Stdlib.Format.printf "%a%!" pp_error e
   | Result.Ok (_, te) -> Stdlib.Format.printf "%a%!" pp_texpr te
 ;;
+
+let run_infer_statements =
+  let open Pprinttypedtree in
+  function
+  | Result.Error e -> Stdlib.Format.printf "%a%!" pp_error e
+  | Result.Ok te ->
+    let pp_statements = pp_statements ";\n" Complete in
+    Stdlib.Format.printf "%a%!" pp_statements te
+;;
+
+(** Infer tests *)
 
 (** Constants  tests *)
 
@@ -422,7 +494,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EConst (CInt 4) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {| (TConst((CInt 4): int)) |}]
 ;;
@@ -431,7 +503,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EConst (CBool false) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {| (TConst((CBool false): bool)) |}]
 ;;
@@ -442,7 +514,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EVar "x" in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {| Typechecker error: undefined variable 'x'  |}]
 ;;
@@ -453,7 +525,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Add, EConst (CInt 1), EConst (CInt 1)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -468,7 +540,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Sub, EConst (CInt 1), EConst (CInt 1)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -483,7 +555,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Div, EConst (CInt 1), EConst (CInt 1)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -498,7 +570,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Mul, EConst (CInt 1), EConst (CInt 1)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -513,7 +585,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Eq, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -528,7 +600,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Neq, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -543,7 +615,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gt, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -558,7 +630,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Lt, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -573,7 +645,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gte, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -588,7 +660,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Lte, EConst (CInt (-1)), EConst (CInt 100)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -605,7 +677,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Xor, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -620,7 +692,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (And, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -635,7 +707,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Or, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -650,7 +722,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Eq, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -665,7 +737,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Neq, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -680,7 +752,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gt, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -695,7 +767,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gt, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -710,7 +782,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Lt, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -725,7 +797,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gte, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -740,7 +812,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Lte, EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -757,7 +829,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Add, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on bool and int
@@ -768,7 +840,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Sub, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on bool and int
@@ -779,7 +851,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Div, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on bool and int
@@ -790,7 +862,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Mul, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on bool and int
@@ -801,7 +873,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Xor, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -812,7 +884,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (And, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -823,7 +895,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Or, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -834,7 +906,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Eq, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -845,7 +917,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Neq, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -856,7 +928,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gt, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -867,7 +939,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Lt, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -878,7 +950,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Gte, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -889,7 +961,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EBinop (Lte, EConst (CInt 42), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -902,7 +974,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EFun ("x", EVar "x") in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     (TFun: ('a -> 'a) (
@@ -916,7 +988,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EFun ("x", EConst (CInt 1)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -931,7 +1003,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EFun ("x", EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
@@ -948,12 +1020,12 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EIfThenElse (EConst (CBool true), EConst (CInt 4), EConst (CInt 5)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
-    (TIfThenElse(
-        (TConst((CBool true): bool)),
+    (TIfThenElse: int
+        ((TConst((CBool true): bool)),
         (TConst((CInt 4): int)),
         (TConst((CInt 5): int))
     ))
@@ -966,12 +1038,12 @@ let%expect_test _ =
     let e =
       EIfThenElse (EConst (CBool true), EConst (CBool true), EConst (CBool false))
     in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect
     {|
-    (TIfThenElse(
-        (TConst((CBool true): bool)),
+    (TIfThenElse: bool
+        ((TConst((CBool true): bool)),
         (TConst((CBool true): bool)),
         (TConst((CBool false): bool))
     ))
@@ -982,7 +1054,7 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EIfThenElse (EConst (CInt 3), EConst (CBool true), EConst (CBool false)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on int and bool
@@ -993,20 +1065,44 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e = EIfThenElse (EConst (CBool true), EConst (CBool true), EConst (CInt 3)) in
-    infer_expr e |> run_infer
+    infer_expr e |> run_infer_expr
   in
   [%expect {|
     Typechecker error: unification failed on bool and int
 |}]
 ;;
 
-(** Let tests *)
+(** Let in tests *)
 
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = ELet ("result", EConst (CBool true)) in
-    infer_expr e |> run_infer
+    let e = ELetIn ("id", EFun ("x", EVar "x"), EApp (EVar "id", EConst (CInt 1))) in
+    infer_expr e |> run_infer_expr
+  in
+  [%expect
+    {|
+    (TLetIn(
+        id: ('a -> 'a),
+        (TFun: ('a -> 'a) (
+            (x: 'a),
+            (x: 'a)
+        )),
+        (TApp: int (
+            (id: (int -> int)),
+            (TConst((CInt 1): int))
+        ))
+    ))
+|}]
+;;
+
+(** Statements tests *)
+
+let%expect_test _ =
+  let open Ast in
+  let _ =
+    let e = [ ELet ("result", EConst (CBool true)) ] in
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1020,8 +1116,8 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = ELet ("result", EConst (CInt 4)) in
-    infer_expr e |> run_infer
+    let e = [ ELet ("result", EConst (CInt 4)) ] in
+    infer_statements e |> run_infer_statements
   in
   [%expect {|
     (TLet(
@@ -1034,8 +1130,8 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = ELet ("result", EFun ("x", EVar "x")) in
-    infer_expr e |> run_infer
+    let e = [ ELet ("result", EFun ("x", EVar "x")) ] in
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1052,8 +1148,8 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = ELet ("result", EFun ("x", EConst (CInt 5))) in
-    infer_expr e |> run_infer
+    let e = [ ELet ("result", EFun ("x", EConst (CInt 5))) ] in
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1071,22 +1167,23 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      ELet
-        ( "sum4"
-        , EFun
-            ( "x"
-            , EFun
-                ( "y"
-                , EFun
-                    ( "z"
-                    , EFun
-                        ( "w"
-                        , EBinop
-                            ( Add
-                            , EBinop (Add, EVar "x", EVar "y")
-                            , EBinop (Add, EVar "z", EVar "w") ) ) ) ) ) )
+      [ ELet
+          ( "sum4"
+          , EFun
+              ( "x"
+              , EFun
+                  ( "y"
+                  , EFun
+                      ( "z"
+                      , EFun
+                          ( "w"
+                          , EBinop
+                              ( Add
+                              , EBinop (Add, EVar "x", EVar "y")
+                              , EBinop (Add, EVar "z", EVar "w") ) ) ) ) ) )
+      ]
     in
-    infer_expr e |> run_infer
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1118,13 +1215,11 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Application tests *)
-
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = ELet ("apply", EFun ("f", EFun ("a", EApp (EVar "f", EVar "a")))) in
-    infer_expr e |> run_infer
+    let e = [ ELet ("apply", EFun ("f", EFun ("a", EApp (EVar "f", EVar "a")))) ] in
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1149,31 +1244,32 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      ELet
-        ( "apply5"
-        , EFun
-            ( "function"
-            , EFun
-                ( "a"
-                , EFun
-                    ( "b"
-                    , EFun
-                        ( "c"
-                        , EFun
-                            ( "d"
-                            , EFun
-                                ( "e"
-                                , EApp
-                                    ( EApp
-                                        ( EApp
-                                            ( EApp
-                                                ( EApp (EVar "function", EVar "a")
-                                                , EVar "b" )
-                                            , EVar "c" )
-                                        , EVar "d" )
-                                    , EVar "e" ) ) ) ) ) ) ) )
+      [ ELet
+          ( "apply5"
+          , EFun
+              ( "function"
+              , EFun
+                  ( "a"
+                  , EFun
+                      ( "b"
+                      , EFun
+                          ( "c"
+                          , EFun
+                              ( "d"
+                              , EFun
+                                  ( "e"
+                                  , EApp
+                                      ( EApp
+                                          ( EApp
+                                              ( EApp
+                                                  ( EApp (EVar "function", EVar "a")
+                                                  , EVar "b" )
+                                              , EVar "c" )
+                                          , EVar "d" )
+                                      , EVar "e" ) ) ) ) ) ) ) )
+      ]
     in
-    infer_expr e |> run_infer
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1217,52 +1313,29 @@ let%expect_test _ =
 |}]
 ;;
 
-(** Let in tests *)
-
-let%expect_test _ =
-  let open Ast in
-  let _ =
-    let e = ELetIn ("id", EFun ("x", EVar "x"), EApp (EVar "id", EConst (CInt 1))) in
-    infer_expr e |> run_infer
-  in
-  [%expect
-    {|
-    (TLetIn(
-        id: ('a -> 'a),
-        (TFun: ('a -> 'a) (
-            (x: 'a),
-            (x: 'a)
-        )),
-        (TApp: int (
-            (id: (int -> int)),
-            (TConst((CInt 1): int))
-        ))
-    ))
-|}]
-;;
-
 (** Let rec in tests *)
 
 let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      ELet
-        ( "sumn"
-        , EFun
-            ( "x"
-            , ELetRecIn
-                ( "helper"
-                , EFun
-                    ( "x"
-                    , EIfThenElse
-                        ( EBinop (Eq, EVar "x", EConst (CInt 1))
-                        , EConst (CInt 1)
-                        , EBinop (Add, EVar "x", EBinop (Sub, EVar "x", EConst (CInt 1)))
-                        ) )
-                , EApp (EVar "helper", EVar "x") ) ) )
+      [ ELet
+          ( "sumn"
+          , EFun
+              ( "x"
+              , ELetRecIn
+                  ( "helper"
+                  , EFun
+                      ( "x"
+                      , EIfThenElse
+                          ( EBinop (Eq, EVar "x", EConst (CInt 1))
+                          , EConst (CInt 1)
+                          , EBinop (Add, EVar "x", EBinop (Sub, EVar "x", EConst (CInt 1)))
+                          ) )
+                  , EApp (EVar "helper", EVar "x") ) ) )
+      ]
     in
-    infer_expr e |> run_infer
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1274,8 +1347,8 @@ let%expect_test _ =
                 helper: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
-                    (TIfThenElse(
-                        (Eq: (int -> (int -> bool)) (
+                    (TIfThenElse: int
+                        ((Eq: (int -> (int -> bool)) (
                             (x: int),
                             (TConst((CInt 1): int))
                         )),
@@ -1305,19 +1378,21 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      ELetRec
-        ( "fact"
-        , EFun
-            ( "n"
-            , EIfThenElse
-                ( EBinop (Eq, EVar "n", EConst (CInt 1))
-                , EConst (CInt 1)
-                , EBinop
-                    ( Mul
-                    , EApp (EVar "fact", EVar "n")
-                    , EApp (EVar "fact", EBinop (Sub, EVar "n", EConst (CInt 1))) ) ) ) )
+      [ ELetRec
+          ( "fact"
+          , EFun
+              ( "n"
+              , EIfThenElse
+                  ( EBinop (Eq, EVar "n", EConst (CInt 1))
+                  , EConst (CInt 1)
+                  , EBinop
+                      ( Mul
+                      , EApp (EVar "fact", EVar "n")
+                      , EApp (EVar "fact", EBinop (Sub, EVar "n", EConst (CInt 1))) ) ) )
+          )
+      ]
     in
-    infer_expr e |> run_infer
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1325,8 +1400,8 @@ let%expect_test _ =
         fact: (int -> int),
         (TFun: (int -> int) (
             (n: int),
-            (TIfThenElse(
-                (Eq: (int -> (int -> bool)) (
+            (TIfThenElse: int
+                ((Eq: (int -> (int -> bool)) (
                     (n: int),
                     (TConst((CInt 1): int))
                 )),
@@ -1354,26 +1429,28 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      ELet
-        ( "fac"
-        , EFun
-            ( "n"
-            , ELetRecIn
-                ( "fact"
-                , EFun
-                    ( "n"
-                    , EFun
-                        ( "acc"
-                        , EIfThenElse
-                            ( EBinop (Lt, EVar "n", EConst (CInt 1))
-                            , EVar "acc"
-                            , EApp
-                                ( EApp
-                                    (EVar "fact", EBinop (Sub, EVar "n", EConst (CInt 1)))
-                                , EBinop (Mul, EVar "acc", EVar "n") ) ) ) )
-                , EApp (EApp (EVar "fact", EVar "n"), EConst (CInt 1)) ) ) )
+      [ ELet
+          ( "fac"
+          , EFun
+              ( "n"
+              , ELetRecIn
+                  ( "fact"
+                  , EFun
+                      ( "n"
+                      , EFun
+                          ( "acc"
+                          , EIfThenElse
+                              ( EBinop (Lt, EVar "n", EConst (CInt 1))
+                              , EVar "acc"
+                              , EApp
+                                  ( EApp
+                                      ( EVar "fact"
+                                      , EBinop (Sub, EVar "n", EConst (CInt 1)) )
+                                  , EBinop (Mul, EVar "acc", EVar "n") ) ) ) )
+                  , EApp (EApp (EVar "fact", EVar "n"), EConst (CInt 1)) ) ) )
+      ]
     in
-    infer_expr e |> run_infer
+    infer_statements e |> run_infer_statements
   in
   [%expect
     {|
@@ -1387,8 +1464,8 @@ let%expect_test _ =
                     (n: int),
                     (TFun: (int -> int) (
                         (acc: int),
-                        (TIfThenElse(
-                            (Lt: (int -> (int -> bool)) (
+                        (TIfThenElse: int
+                            ((Lt: (int -> (int -> bool)) (
                                 (n: int),
                                 (TConst((CInt 1): int))
                             )),
@@ -1415,6 +1492,71 @@ let%expect_test _ =
                         (n: int)
                     )),
                     (TConst((CInt 1): int))
+                ))
+            ))
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Ast in
+  let _ =
+    let e =
+      [ ELetRec ("fix", EFun ("f", EApp (EVar "f", EApp (EVar "fix", EVar "f")))) ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLetRec(
+        fix: (('a -> 'a) -> 'a),
+        (TFun: (('a -> 'a) -> 'a) (
+            (f: ('a -> 'a)),
+            (TApp: 'a (
+                (f: ('a -> 'a)),
+                (TApp: 'a (
+                    (fix: (('a -> 'a) -> 'a)),
+                    (f: ('a -> 'a))
+                ))
+            ))
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Ast in
+  let _ =
+    let e =
+      [ ELetRec
+          ( "fix"
+          , EFun
+              ( "f"
+              , EFun
+                  ("eta", EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "eta"))
+              ) )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLetRec(
+        fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)),
+        (TFun: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)) (
+            (f: (('a -> 'b) -> ('a -> 'b))),
+            (TFun: ('a -> 'b) (
+                (eta: 'a),
+                (TApp: 'b (
+                    (TApp: ('a -> 'b) (
+                        (f: (('a -> 'b) -> ('a -> 'b))),
+                        (TApp: ('a -> 'b) (
+                            (fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))),
+                            (f: (('a -> 'b) -> ('a -> 'b)))
+                        ))
+                    )),
+                    (eta: 'a)
                 ))
             ))
         ))
