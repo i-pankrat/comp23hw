@@ -134,11 +134,18 @@ module Subst : sig
 
   val compose_all : t list -> t R.t
   val remove : t -> fresh -> t
+  (* val pp : Format.formatter -> t -> unit *)
 end = struct
   open R
   open R.Syntax
 
   type t = (fresh, ty) Map.Poly.t
+
+  (* let pp ppf subst =
+     let open Format in
+     Map.Poly.iteri subst ~f:(fun ~key ~data ->
+     fprintf ppf "'_%d -> %a@\n" key (Pprinttypetree.pp_ty_with_subs None) data)
+     ;; *)
 
   let empty = Map.Poly.empty
   let mapping k v = if Type.occurs_in k v then fail `Occurs_check else return (k, v)
