@@ -421,24 +421,22 @@ let fix_typedtree subst =
   | TLetRec (name, e, typ) -> tletrec name (fix_typedtree subst e) (apply_subst typ)
 ;;
 
-let infer_statements : Ast.statements -> tbinding list t =
+let infer_statements (bindings : Ast.statements) : tbinding list t =
   let open Ast in
-  function
-  | Binding bindings ->
-    let* _, tbindings =
-      List.fold
-        ~init:(return (empty, []))
-        ~f:(fun env_binding ->
-          function
-          | (ELet (name, _) | ELetRec (name, _)) as new_binding ->
-            let* env, tbindings = env_binding in
-            let* subst, ty, tbinding = infer_binding env new_binding in
-            return
-              ( TypeEnv.extend env (name, S (VarSet.empty, ty))
-              , tbindings @ [ fix_typedtree subst tbinding ] ))
-        bindings
-    in
-    return tbindings
+  let* _, tbindings =
+    List.fold
+      ~init:(return (empty, []))
+      ~f:(fun env_binding ->
+        function
+        | (ELet (name, _) | ELetRec (name, _)) as new_binding ->
+          let* env, tbindings = env_binding in
+          let* subst, ty, tbinding = infer_binding env new_binding in
+          return
+            ( TypeEnv.extend env (name, S (VarSet.empty, ty))
+            , tbindings @ [ fix_typedtree subst tbinding ] ))
+      bindings
+  in
+  return tbindings
 ;;
 
 let infer_type infer_fun s = Result.map ~f:Stdlib.Fun.id (run (infer_fun s))
@@ -1077,7 +1075,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = Binding [ ELet ("result", EConst (CBool true)) ] in
+    let e = [ ELet ("result", EConst (CBool true)) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -1092,7 +1090,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = Binding [ ELet ("result", EConst (CInt 4)) ] in
+    let e = [ ELet ("result", EConst (CInt 4)) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect {|
@@ -1106,7 +1104,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = Binding [ ELet ("result", EFun ("x", EVar "x")) ] in
+    let e = [ ELet ("result", EFun ("x", EVar "x")) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -1124,7 +1122,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e = Binding [ ELet ("result", EFun ("x", EConst (CInt 5))) ] in
+    let e = [ ELet ("result", EFun ("x", EConst (CInt 5))) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -1143,22 +1141,21 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      Binding
-        [ ELet
-            ( "sum4"
-            , EFun
-                ( "x"
-                , EFun
-                    ( "y"
-                    , EFun
-                        ( "z"
-                        , EFun
-                            ( "w"
-                            , EBinop
-                                ( Add
-                                , EBinop (Add, EVar "x", EVar "y")
-                                , EBinop (Add, EVar "z", EVar "w") ) ) ) ) ) )
-        ]
+      [ ELet
+          ( "sum4"
+          , EFun
+              ( "x"
+              , EFun
+                  ( "y"
+                  , EFun
+                      ( "z"
+                      , EFun
+                          ( "w"
+                          , EBinop
+                              ( Add
+                              , EBinop (Add, EVar "x", EVar "y")
+                              , EBinop (Add, EVar "z", EVar "w") ) ) ) ) ) )
+      ]
     in
     infer_statements e |> run_infer_statements
   in
@@ -1195,9 +1192,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Ast in
   let _ =
-    let e =
-      Binding [ ELet ("apply", EFun ("f", EFun ("a", EApp (EVar "f", EVar "a")))) ]
-    in
+    let e = [ ELet ("apply", EFun ("f", EFun ("a", EApp (EVar "f", EVar "a")))) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -1223,31 +1218,30 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      Binding
-        [ ELet
-            ( "apply5"
-            , EFun
-                ( "function"
-                , EFun
-                    ( "a"
-                    , EFun
-                        ( "b"
-                        , EFun
-                            ( "c"
-                            , EFun
-                                ( "d"
-                                , EFun
-                                    ( "e"
-                                    , EApp
-                                        ( EApp
-                                            ( EApp
-                                                ( EApp
-                                                    ( EApp (EVar "function", EVar "a")
-                                                    , EVar "b" )
-                                                , EVar "c" )
-                                            , EVar "d" )
-                                        , EVar "e" ) ) ) ) ) ) ) )
-        ]
+      [ ELet
+          ( "apply5"
+          , EFun
+              ( "function"
+              , EFun
+                  ( "a"
+                  , EFun
+                      ( "b"
+                      , EFun
+                          ( "c"
+                          , EFun
+                              ( "d"
+                              , EFun
+                                  ( "e"
+                                  , EApp
+                                      ( EApp
+                                          ( EApp
+                                              ( EApp
+                                                  ( EApp (EVar "function", EVar "a")
+                                                  , EVar "b" )
+                                              , EVar "c" )
+                                          , EVar "d" )
+                                      , EVar "e" ) ) ) ) ) ) ) )
+      ]
     in
     infer_statements e |> run_infer_statements
   in
@@ -1299,23 +1293,21 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      Binding
-        [ ELet
-            ( "sumn"
-            , EFun
-                ( "x"
-                , ELetRecIn
-                    ( "helper"
-                    , EFun
-                        ( "x"
-                        , EIfThenElse
-                            ( EBinop (Eq, EVar "x", EConst (CInt 1))
-                            , EConst (CInt 1)
-                            , EBinop
-                                (Add, EVar "x", EBinop (Sub, EVar "x", EConst (CInt 1)))
-                            ) )
-                    , EApp (EVar "helper", EVar "x") ) ) )
-        ]
+      [ ELet
+          ( "sumn"
+          , EFun
+              ( "x"
+              , ELetRecIn
+                  ( "helper"
+                  , EFun
+                      ( "x"
+                      , EIfThenElse
+                          ( EBinop (Eq, EVar "x", EConst (CInt 1))
+                          , EConst (CInt 1)
+                          , EBinop (Add, EVar "x", EBinop (Sub, EVar "x", EConst (CInt 1)))
+                          ) )
+                  , EApp (EVar "helper", EVar "x") ) ) )
+      ]
     in
     infer_statements e |> run_infer_statements
   in
@@ -1360,20 +1352,19 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      Binding
-        [ ELetRec
-            ( "fact"
-            , EFun
-                ( "n"
-                , EIfThenElse
-                    ( EBinop (Eq, EVar "n", EConst (CInt 1))
-                    , EConst (CInt 1)
-                    , EBinop
-                        ( Mul
-                        , EApp (EVar "fact", EVar "n")
-                        , EApp (EVar "fact", EBinop (Sub, EVar "n", EConst (CInt 1))) ) )
-                ) )
-        ]
+      [ ELetRec
+          ( "fact"
+          , EFun
+              ( "n"
+              , EIfThenElse
+                  ( EBinop (Eq, EVar "n", EConst (CInt 1))
+                  , EConst (CInt 1)
+                  , EBinop
+                      ( Mul
+                      , EApp (EVar "fact", EVar "n")
+                      , EApp (EVar "fact", EBinop (Sub, EVar "n", EConst (CInt 1))) ) ) )
+          )
+      ]
     in
     infer_statements e |> run_infer_statements
   in
@@ -1412,27 +1403,26 @@ let%expect_test _ =
   let open Ast in
   let _ =
     let e =
-      Binding
-        [ ELet
-            ( "fac"
-            , EFun
-                ( "n"
-                , ELetRecIn
-                    ( "fact"
-                    , EFun
-                        ( "n"
-                        , EFun
-                            ( "acc"
-                            , EIfThenElse
-                                ( EBinop (Lt, EVar "n", EConst (CInt 1))
-                                , EVar "acc"
-                                , EApp
-                                    ( EApp
-                                        ( EVar "fact"
-                                        , EBinop (Sub, EVar "n", EConst (CInt 1)) )
-                                    , EBinop (Mul, EVar "acc", EVar "n") ) ) ) )
-                    , EApp (EApp (EVar "fact", EVar "n"), EConst (CInt 1)) ) ) )
-        ]
+      [ ELet
+          ( "fac"
+          , EFun
+              ( "n"
+              , ELetRecIn
+                  ( "fact"
+                  , EFun
+                      ( "n"
+                      , EFun
+                          ( "acc"
+                          , EIfThenElse
+                              ( EBinop (Lt, EVar "n", EConst (CInt 1))
+                              , EVar "acc"
+                              , EApp
+                                  ( EApp
+                                      ( EVar "fact"
+                                      , EBinop (Sub, EVar "n", EConst (CInt 1)) )
+                                  , EBinop (Mul, EVar "acc", EVar "n") ) ) ) )
+                  , EApp (EApp (EVar "fact", EVar "n"), EConst (CInt 1)) ) ) )
+      ]
     in
     infer_statements e |> run_infer_statements
   in
