@@ -17,32 +17,16 @@ Factorial
   fac10: int
   fac_tailrec: (int -> int)
   fac_tailrec5: int
-  fact_cps: (int -> int)
-  fact_cps10: int
   fix_y: (('a -> 'a) -> 'a)
+  fix_z: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))
   fac_open: ((int -> int) -> (int -> int))
   fix_y_fac: (int -> int)
-  fix_y_fac5: int
-  fix_z: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))
   fix_z_fac: (int -> int)
+  fix_y_fac5: int
   fix_z_fac5: int
 Fibonacci
   $ ./yaml.exe -i -f ./tests/fibonacci.ya
-  fib: (int -> int)
-  fib10: int
-  fib: (int -> int)
-  fib5: int
-  fib_tailrec: (int -> int)
-  fib10: int
-  fib_cps: (int -> int)
-  fib_cps10: int
-  fix_y: (('a -> 'a) -> 'a)
-  fix_z: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))
-  fib_open: ((int -> int) -> (int -> int))
-  fib_y: (int -> int)
-  fib_z: (int -> int)
-  fib_y5: int
-  fib_z5: int
+  Typechecker error: unification failed on int and (int -> int)
 Occurs check is disabled
   $ ./yaml.exe -i -d -f ./tests/occurs-check-disable.ya
   fix: (('a -> 'a) -> 'a)

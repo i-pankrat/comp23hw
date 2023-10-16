@@ -1,4 +1,4 @@
-let rec fac n = if n = 1 then 1 else n * fac (n - 1)
+let rec fac n = if n <= 1 then 1 else n * fac (n - 1)
 
 let fac10 = fac 10
 
@@ -8,25 +8,13 @@ let fac_tailrec n =
 
 let fac_tailrec5 = fac_tailrec 5
 
-let fact_cps n =
-  let rec helper acc count k =
-    if count = n then k acc
-    else helper (acc * (count + 1)) (count + 1) k
-  in
-  helper 1 0 (fun x -> x)
-
-let fact_cps10 = fact_cps 10
-
 let rec fix_y f = f (fix_y f)
+let rec fix_z f x = f (fix_z f) x
 
 let fac_open self n = if n <= 1 then 1 else n * (self (n - 1))
 
 let fix_y_fac = fix_y fac_open
-
-let fix_y_fac5 = fix_y_fac 5
-
-let rec fix_z f x = f (fix_z f) x
-
 let fix_z_fac = fix_z fac_open
 
+let fix_y_fac5 = fix_y_fac 5
 let fix_z_fac5 = fix_z_fac 5
