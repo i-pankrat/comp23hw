@@ -38,7 +38,7 @@ type expr =
   (** An expression for let in declaration: let id = expr in expr *)
   | ELetRecIn of string * expr * expr
   (** An expression for let rec in declaration: let rec id = expr in expr *)
-  | EFun of string * expr (** An expression for function: fun expr -> expr *)
+  | EFun of string * expr (** An expression for function: fun id -> expr *)
 [@@deriving show { with_path = false }]
 
 (** Binding type *)

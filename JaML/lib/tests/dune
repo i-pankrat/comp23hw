@@ -1,0 +1,8 @@
+(library
+ (name tests)
+ (libraries JaML.Lib stdio)
+ (instrumentation
+  (backend bisect_ppx))
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq)))
