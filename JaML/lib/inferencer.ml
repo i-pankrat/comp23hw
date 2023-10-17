@@ -453,10 +453,10 @@ let infer_statements (bindings : Ast.statements) : tbinding list t =
           let* subst, ty, tbinding = infer_binding env new_binding in
           return
             ( TypeEnv.extend env (name, S (VarSet.empty, ty))
-            , tbindings @ [ fix_typedtree subst tbinding ] ))
+            , fix_typedtree subst tbinding :: tbindings ))
       bindings
   in
-  return tbindings
+  return @@ List.rev tbindings
 ;;
 
 let infer_type infer_fun s = Result.map ~f:Stdlib.Fun.id (run (infer_fun s))
