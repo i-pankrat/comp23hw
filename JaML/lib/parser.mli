@@ -19,5 +19,4 @@ val statements_p : Ast.statements Angstrom.t
 (** Parser of bindings *)
 val bindings_p : Ast.bindings Angstrom.t
 
-(** Mini language parser *)
 val parse : string -> (Ast.statements, error) result

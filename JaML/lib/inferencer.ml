@@ -201,7 +201,9 @@ end = struct
       fold_left extensible_subst ~init:(return s2) ~f:(fun key value acc ->
         let v = apply s2 value in
         let* mapk, mapv = mapping key v in
-        return @@ Map.Poly.set acc ~key:mapk ~data:mapv)
+        match Map.Poly.add acc ~key:mapk ~data:mapv with
+        | `Ok map -> return map
+        | `Duplicate -> return acc)
     | Some v2 ->
       let* s2 = unify value v2 in
       compose extensible_subst s2
