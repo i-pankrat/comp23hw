@@ -9,6 +9,7 @@
   Inferencer
   Pprinttypetree
   Pprinttypedtree
+  Lambdalift
   Alpha
   Closure
   Counter)
