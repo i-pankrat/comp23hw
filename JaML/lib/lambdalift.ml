@@ -234,3 +234,59 @@ let%expect_test _ =
     ))
  |}]
 ;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      [ TLet
+          ( "sum"
+          , TFun
+              ( Arg ("x", Prim Int)
+              , TLetIn
+                  ( "new_x"
+                  , TBinop
+                      ( Add
+                      , TVar ("x", Prim Int)
+                      , TConst (CInt 1, Prim Int)
+                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                  , TLetIn
+                      ( "new_sum"
+                      , TBinop
+                          ( Add
+                          , TVar ("new_x", Prim Int)
+                          , TConst (CInt 1, Prim Int)
+                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                      , TVar ("new_sum", Prim Int)
+                      , Prim Int )
+                  , Prim Int )
+              , Arrow (Prim Int, Prim Int) )
+          , Arrow (Prim Int, Prim Int) )
+      ]
+    in
+    lambda_lift e |> run_lambda_lift_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        sum: (int -> int),
+        (TFun: (int -> int) (
+            (x: int),
+            (TLetIn(
+                new_x: int,
+                (Add: (int -> (int -> int)) (
+                    (x: int),
+                    (TConst((CInt 1): int))
+                )),
+                (TLetIn(
+                    new_sum: int,
+                    (Add: (int -> (int -> int)) (
+                        (new_x: int),
+                        (TConst((CInt 1): int))
+                    )),
+                    (new_sum: int)
+                ))
+            ))
+        ))
+    ))
+ |}]
+;;
