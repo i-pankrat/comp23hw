@@ -120,9 +120,13 @@ and closure_expr env known expr =
     let e2, known, env = closure_expr env known e2 in
     TIfThenElse (cond, e1, e2, ty), known, env
   | TLetRecIn (id, e1, e2, ty) ->
-    let env, known', e1 = get_args_let env (NameS.singleton (id, ty)) e1 in
+    let known = NameS.singleton (id, ty) in
+    let env, known', e1 = get_args_let env known e1 in
     let fv_known = free_variables e1 in
-    let diff = NameS.diff fv_known known' |> NameS.elements in
+    let diff =
+      (if NameS.cardinal known' = 1 then known' else NameS.diff fv_known known')
+      |> NameS.elements
+    in
     let e1, ty = put_diff_arg diff (e1, ty) in
     let env = if List.length diff > 0 then extend_env id (diff, ty, None) env else env in
     let e2, known, env = closure_expr env known' e2 in
@@ -131,7 +135,10 @@ and closure_expr env known expr =
   | TLetIn (id, e1, e2, ty) ->
     let env, known', e1 = get_args_let env NameS.empty e1 in
     let fv_known = free_variables e1 in
-    let diff = NameS.diff fv_known known' |> NameS.elements in
+    let diff =
+      (if NameS.is_empty known' then known' else NameS.diff fv_known known')
+      |> NameS.elements
+    in
     let e1, ty = put_diff_arg diff (e1, ty) in
     let env = if List.length diff > 0 then extend_env id (diff, ty, None) env else env in
     let e2, known, env = closure_expr env known' e2 in
@@ -145,7 +152,7 @@ let closure_bindings env = function
     let env, _, expr = get_args_let env NameS.empty expr in
     TLet (id, expr, ty), env
   | TLetRec (id, expr, ty) ->
-    let env, _, expr = get_args_let env NameS.empty expr in
+    let env, _, expr = get_args_let env (NameS.singleton (id, ty)) expr in
     TLetRec (id, expr, ty), env
 ;;
 
@@ -509,19 +516,16 @@ let%expect_test _ =
                       , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
                   , TLetIn
                       ( "new_sum"
-                      , TFun
-                          ( Arg ("y", Prim Int)
-                          , TBinop
-                              ( Add
-                              , TVar ("new_x", Prim Int)
-                              , TVar ("y", Prim Int)
-                              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                          , Arrow (Prim Int, Prim Int) )
-                      , TVar ("new_sum", Arrow (Prim Int, Prim Int))
-                      , Arrow (Prim Int, Prim Int) )
+                      , TBinop
+                          ( Add
+                          , TVar ("new_x", Prim Int)
+                          , TConst (CInt 1, Prim Int)
+                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                      , TVar ("new_sum", Prim Int)
+                      , Prim Int )
                   , Prim Int )
-              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+              , Arrow (Prim Int, Prim Int) )
+          , Arrow (Prim Int, Prim Int) )
       ]
     in
     closure e |> run_closure_statements
@@ -529,37 +533,22 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        sum: (int -> (int -> int)),
-        (TFun: (int -> (int -> int)) (
+        sum: (int -> int),
+        (TFun: (int -> int) (
             (x: int),
             (TLetIn(
-                new_x: (int -> int),
-                (TFun: (int -> int) (
+                new_x: int,
+                (Add: (int -> (int -> int)) (
                     (x: int),
-                    (Add: (int -> (int -> int)) (
-                        (x: int),
-                        (TConst((CInt 1): int))
-                    ))
+                    (TConst((CInt 1): int))
                 )),
                 (TLetIn(
-                    new_sum: (int -> (int -> int)),
-                    (TFun: (int -> (int -> int)) (
-                        (x: int),
-                        (TFun: (int -> int) (
-                            (y: int),
-                            (Add: (int -> (int -> int)) (
-                                (TApp: (int -> (int -> int)) (
-                                    (new_x: int),
-                                    (x: int)
-                                )),
-                                (y: int)
-                            ))
-                        ))
+                    new_sum: int,
+                    (Add: (int -> (int -> int)) (
+                        (new_x: int),
+                        (TConst((CInt 1): int))
                     )),
-                    (TApp: (int -> (int -> (int -> int))) (
-                        (new_sum: (int -> int)),
-                        (x: int)
-                    ))
+                    (new_sum: int)
                 ))
             ))
         ))
