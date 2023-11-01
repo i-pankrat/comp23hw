@@ -2,5 +2,5 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-(** Closure *)
+(** Closure conversion of statements *)
 val closure : Typedtree.tbinding list -> Typedtree.tbinding list
