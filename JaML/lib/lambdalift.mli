@@ -2,5 +2,5 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-(** Lambda lift *)
+(** Lambda lifting of statements *)
 val lambda_lift : Typedtree.tbinding list -> Typedtree.tbinding list
