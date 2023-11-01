@@ -61,13 +61,86 @@ let run_alpha_statements =
 
 let%expect_test _ =
   let _ =
-    let e = [ TLet ("test", TConst (CInt 1, Prim Int), Prim Int) ] in
+    let e =
+      [ TLet
+          ( "sum"
+          , TFun
+              ( Arg ("x", Prim Int)
+              , TLetIn
+                  ( "new_x"
+                  , TFun
+                      ( Arg ("x", Prim Int)
+                      , TBinop
+                          ( Add
+                          , TVar ("x", Prim Int)
+                          , TConst (CInt 1, Prim Int)
+                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                      , Arrow (Prim Int, Prim Int) )
+                  , TLetIn
+                      ( "new_sum"
+                      , TFun
+                          ( Arg ("x", Prim Int)
+                          , TFun
+                              ( Arg ("y", Prim Int)
+                              , TBinop
+                                  ( Add
+                                  , TApp
+                                      ( TVar ("new_x", Arrow (Prim Int, Prim Int))
+                                      , TVar ("x", Prim Int)
+                                      , Prim Int )
+                                  , TVar ("y", Prim Int)
+                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                              , Arrow (Prim Int, Prim Int) )
+                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                      , TApp
+                          ( TVar ("new_sum", Arrow (Prim Int, Arrow (Prim Int, Prim Int)))
+                          , TVar ("x", Prim Int)
+                          , Arrow (Prim Int, Prim Int) )
+                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                  , Arrow (Prim Int, Prim Int) )
+              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+      ]
+    in
     alpha e |> run_alpha_statements
   in
-  [%expect {|
+  [%expect
+    {|
     (TLet(
-        test3: int,
-        (TConst((CInt 1): int))
+        sum3: (int -> (int -> int)),
+        (TFun: (int -> (int -> int)) (
+            (x4: int),
+            (TLetIn(
+                new_x5: (int -> int),
+                (TFun: (int -> int) (
+                    (x9: int),
+                    (Add: (int -> (int -> int)) (
+                        (x9: int),
+                        (TConst((CInt 1): int))
+                    ))
+                )),
+                (TLetIn(
+                    new_sum6: (int -> (int -> int)),
+                    (TFun: (int -> (int -> int)) (
+                        (x7: int),
+                        (TFun: (int -> int) (
+                            (y8: int),
+                            (Add: (int -> (int -> int)) (
+                                (TApp: int (
+                                    (new_x5: (int -> int)),
+                                    (x7: int)
+                                )),
+                                (y8: int)
+                            ))
+                        ))
+                    )),
+                    (TApp: (int -> int) (
+                        (new_sum6: (int -> (int -> int))),
+                        (x4: int)
+                    ))
+                ))
+            ))
+        ))
     ))
  |}]
 ;;
