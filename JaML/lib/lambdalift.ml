@@ -39,25 +39,20 @@ let rec lambda_lift_expr env = function
     TIfThenElse (cond, e1, e2, ty), env
   | TLetRecIn (id, e1, e2, ty) ->
     let args, e1 = get_args_let [] e1 in
+    let e2, env = lambda_lift_expr env e2 in
     let expr, env =
-      if List.length args = 0
+      if List.is_empty args
       then TLetRecIn (id, e1, e2, ty), env
-      else (
-        let env = extend_env env id (TLetRec (id, e1, ty)) in
-        e2, env)
+      else e2, extend_env env id (TLetRec (id, e1, ty))
     in
     expr, env
   | TLetIn (id, e1, e2, ty) ->
     let args, e1 = get_args_let [] e1 in
+    let e2, env = lambda_lift_expr env e2 in
     let expr, env =
-      if List.length args = 0
-      then (
-        let e2, env = lambda_lift_expr env e2 in
-        TLetIn (id, e1, e2, ty), env)
-      else (
-        let env = extend_env env id (TLet (id, e1, ty)) in
-        let e2, env = lambda_lift_expr env e2 in
-        e2, env)
+      if List.is_empty args
+      then TLetIn (id, e1, e2, ty), env
+      else e2, extend_env env id (TLet (id, e1, ty))
     in
     expr, env
   | other -> other, env
