@@ -4,6 +4,5 @@
 
 (** Counter *)
 module Counter : sig
-  val count_next : unit -> int
   val genid : string -> string
 end
