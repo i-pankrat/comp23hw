@@ -22,7 +22,6 @@ let rec get_args_let known = function
 ;;
 
 let rec lambda_lift_expr env = function
-  | TVar (x, ty) -> TVar (x, ty), env
   | TBinop (op, e1, e2, ty) ->
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
@@ -59,7 +58,7 @@ let rec lambda_lift_expr env = function
       else e2, extend_env env id (TLet (id, e1, ty))
     in
     expr, env
-  | other -> other, env
+  | other -> other, env (* TConst, TVar *)
 ;;
 
 let lambda_lift_bindings env = function
