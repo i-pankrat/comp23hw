@@ -12,8 +12,18 @@ module TS = struct
   let compare ((n1, _) : t) ((n2, _) : t) = Base.Poly.compare n1 n2
 end
 
+(* Set constructed with type t = (id, ty).
+   id is a string representation of variables or function names;
+   ty is its type *)
 module NameS = Stdlib.Set.Make (TS)
 
+(* Environment Map
+   key -- string name of function;
+   value -- ((id, ty) list, ty, option constr):
+   (id, ty) list -- list of arguments that we must add to create a closure in the function;
+   ty -- the final modified function type to which the function should be cast;
+   option constr -- used to store let in constructors created from anonymous functions.
+   In the constructor we put expr which should be in the (in) part of let in *)
 module EnvM = struct
   include Base.Map.Poly
 end
@@ -21,13 +31,12 @@ end
 let find id env = EnvM.find_exn env id
 let extend_env key data env = EnvM.set env ~key ~data
 
+(* Search for free variables in the function body. *)
 let rec free_variables texpr =
   let union = NameS.union in
   match texpr with
   | TVar (x, ty) -> NameS.singleton (x, ty)
-  | TApp (_, expr, _) | TFun (_, expr, _) ->
-    let fv_expr = free_variables expr in
-    fv_expr
+  | TApp (_, expr, _) | TFun (_, expr, _) -> free_variables expr
   | TIfThenElse (cond, e1, e2, _) ->
     let fv_cond = free_variables cond in
     let fv_e1 = free_variables e1 in
@@ -37,52 +46,51 @@ let rec free_variables texpr =
     let fv_e1 = free_variables e1 in
     let fv_e2 = free_variables e2 in
     union fv_e1 fv_e2
-  | _ -> NameS.empty
+  | TConst _ -> NameS.empty
 ;;
 
+(* The function is designed to create a closure when declaring a function.
+   Missing variables are added explicitly. *)
 let put_diff_arg diff acc =
-  List.fold diff ~init:acc ~f:(fun (expr, ty) var ->
-    let var, ty1 = var in
+  List.fold diff ~init:acc ~f:(fun (expr, ty) (var, ty1) ->
     let ty2 = Arrow (ty1, ty) in
     TFun (Arg (var, ty1), expr, ty2), ty2)
 ;;
 
+(* The function is designed to create a closure when declaring a function. *)
 let put_diff_app diff acc =
-  List.fold_left diff ~init:acc ~f:(fun (expr, expr_ty) var ->
-    let var, ty1 = var in
+  List.fold diff ~init:acc ~f:(fun (expr, expr_ty) (var, ty1) ->
     let ty2 = Arrow (ty1, expr_ty) in
     TApp (expr, TVar (var, ty1), ty2), ty2)
 ;;
 
+(* Function for declaring anonymous functions in let in. *)
 let create_closure_let (elm, env) diff =
   List.fold
     (EnvM.to_alist diff)
     ~init:(elm, env)
     ~f:(fun (elm, env) (key, (_, _, constr)) ->
       match constr with
-      | Some constr ->
-        let expr = constr elm in
-        expr, EnvM.remove env key
+      | Some constr -> constr elm, EnvM.remove env key
       | None -> elm, env)
 ;;
 
-let rec get_args_let env known expr =
-  match expr with
+(* Function to find variables in function arguments and then store them in Set.
+   Necessary to separate TFuns that refer to function arguments and anonymous functions. *)
+let rec get_args_let env known = function
   | TFun (Arg (id, ty1), e2, ty2) ->
     let known' = NameS.add (id, ty1) known in
-    let env, known, e2 = get_args_let env known' e2 in
-    env, known, TFun (Arg (id, ty1), e2, ty2)
-  | other ->
-    let expr, known, env = closure_expr env known other in
-    env, known, expr
+    let e2, known, env = get_args_let env known' e2 in
+    TFun (Arg (id, ty1), e2, ty2), known, env
+  | other -> closure_expr env known other
 
 and closure_expr env known expr =
   match expr with
-  | TVar (x, ty) ->
+  | TVar (x, ty) as tvar ->
     let expr, _ =
       match find x env with
-      | diff, ty1, _ -> put_diff_app diff (TVar (x, ty), ty1)
-      | (exception Stdlib.Not_found) | (exception Not_found_s _) -> TVar (x, ty), ty
+      | diff, ty1, _ -> put_diff_app diff (tvar, ty1)
+      | (exception Stdlib.Not_found) | (exception Not_found_s _) -> tvar, ty
     in
     expr, known, env
   | TBinop (op, e1, e2, ty) ->
@@ -90,7 +98,7 @@ and closure_expr env known expr =
     let e2, known, env = closure_expr env known e2 in
     TBinop (op, e1, e2, ty), known, env
   | TFun (arg, expr, ty2) ->
-    let env, known, expr = get_args_let env known (TFun (arg, expr, ty2)) in
+    let expr, known, env = get_args_let env known (TFun (arg, expr, ty2)) in
     let fv_known = free_variables expr in
     let diff = NameS.diff fv_known known |> NameS.elements in
     let e1, ty = put_diff_arg diff (expr, ty2) in
@@ -121,7 +129,7 @@ and closure_expr env known expr =
     TIfThenElse (cond, e1, e2, ty), known, env
   | TLetRecIn (id, e1, e2, ty) ->
     let known = NameS.singleton (id, ty) in
-    let env, known', e1 = get_args_let env known e1 in
+    let e1, known', env = get_args_let env known e1 in
     let fv_known = free_variables e1 in
     let diff =
       (if NameS.cardinal known' = 1 then known' else NameS.diff fv_known known')
@@ -133,7 +141,7 @@ and closure_expr env known expr =
     let expr, env = create_closure_let (TLetRecIn (id, e1, e2, ty), env) env in
     expr, known, env
   | TLetIn (id, e1, e2, ty) ->
-    let env, known', e1 = get_args_let env NameS.empty e1 in
+    let e1, known', env = get_args_let env NameS.empty e1 in
     let fv_known = free_variables e1 in
     let diff =
       (if NameS.is_empty known' then known' else NameS.diff fv_known known')
@@ -149,10 +157,10 @@ and closure_expr env known expr =
 
 let closure_bindings env = function
   | TLet (id, expr, ty) ->
-    let env, _, expr = get_args_let env NameS.empty expr in
+    let expr, _, env = get_args_let env NameS.empty expr in
     TLet (id, expr, ty), env
   | TLetRec (id, expr, ty) ->
-    let env, _, expr = get_args_let env (NameS.singleton (id, ty)) expr in
+    let expr, _, env = get_args_let env (NameS.singleton (id, ty)) expr in
     TLetRec (id, expr, ty), env
 ;;
 
@@ -164,394 +172,4 @@ let closure expr =
       env, stmt :: stms)
   in
   List.rev stms
-;;
-
-let run_closure_statements =
-  let open Pprinttypedtree in
-  function
-  | te ->
-    let pp_statements = pp_statements ";\n" Complete in
-    Stdlib.Format.printf "%a%!" pp_statements te
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_sum"
-                  , TFun
-                      ( Arg ("y", Prim Int)
-                      , TBinop
-                          ( Add
-                          , TVar ("x", Prim Int)
-                          , TVar ("y", Prim Int)
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , Arrow (Prim Int, Prim Int) )
-                  , TApp
-                      ( TVar ("new_sum", Arrow (Prim Int, Prim Int))
-                      , TConst (CInt 5, Prim Int)
-                      , Prim Int )
-                  , Arrow (Prim Int, Prim Int) )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
-    in
-    closure e |> run_closure_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TLetIn(
-                new_sum: (int -> (int -> int)),
-                (TFun: (int -> (int -> int)) (
-                    (x: int),
-                    (TFun: (int -> int) (
-                        (y: int),
-                        (Add: (int -> (int -> int)) (
-                            (x: int),
-                            (y: int)
-                        ))
-                    ))
-                )),
-                (TApp: int (
-                    (TApp: (int -> (int -> (int -> int))) (
-                        (new_sum: (int -> int)),
-                        (x: int)
-                    )),
-                    (TConst((CInt 5): int))
-                ))
-            ))
-        ))
-    ))
- |}]
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_sum"
-                  , TFun
-                      ( Arg ("y", Prim Int)
-                      , TFun
-                          ( Arg ("z", Tyvar 2)
-                          , TFun
-                              ( Arg ("c", Tyvar 3)
-                              , TBinop
-                                  ( Add
-                                  , TVar ("x", Prim Int)
-                                  , TVar ("y", Prim Int)
-                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                              , Arrow (Tyvar 3, Prim Int) )
-                          , Arrow (Tyvar 2, Arrow (Tyvar 3, Prim Int)) )
-                      , Arrow (Prim Int, Arrow (Tyvar 2, Arrow (Tyvar 3, Prim Int))) )
-                  , TApp
-                      ( TApp
-                          ( TApp
-                              ( TVar
-                                  ( "new_sum"
-                                  , Arrow
-                                      ( Prim Int
-                                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) ) )
-                              , TConst (CInt 5, Prim Int)
-                              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                          , TConst (CInt 4, Prim Int)
-                          , Arrow (Prim Int, Prim Int) )
-                      , TConst (CInt 3, Prim Int)
-                      , Prim Int )
-                  , Arrow (Prim Int, Arrow (Tyvar 2, Arrow (Tyvar 3, Prim Int))) )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
-    in
-    closure e |> run_closure_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TLetIn(
-                new_sum: (int -> (int -> ('a -> ('b -> int)))),
-                (TFun: (int -> (int -> ('a -> ('b -> int)))) (
-                    (x: int),
-                    (TFun: (int -> ('a -> ('b -> int))) (
-                        (y: int),
-                        (TFun: ('a -> ('b -> int)) (
-                            (z: 'a),
-                            (TFun: ('b -> int) (
-                                (c: 'b),
-                                (Add: (int -> (int -> int)) (
-                                    (x: int),
-                                    (y: int)
-                                ))
-                            ))
-                        ))
-                    ))
-                )),
-                (TApp: int (
-                    (TApp: (int -> int) (
-                        (TApp: (int -> (int -> int)) (
-                            (TApp: (int -> (int -> (int -> ('a -> ('b -> int))))) (
-                                (new_sum: (int -> (int -> (int -> int)))),
-                                (x: int)
-                            )),
-                            (TConst((CInt 5): int))
-                        )),
-                        (TConst((CInt 4): int))
-                    )),
-                    (TConst((CInt 3): int))
-                ))
-            ))
-        ))
-    ))
- |}]
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "fac"
-          , TFun
-              ( Arg ("n", Prim Int)
-              , TLetRecIn
-                  ( "fack"
-                  , TFun
-                      ( Arg ("n", Prim Int)
-                      , TFun
-                          ( Arg ("k", Arrow (Prim Int, Prim Int))
-                          , TIfThenElse
-                              ( TBinop
-                                  ( Lte
-                                  , TVar ("n", Prim Int)
-                                  , TConst (CInt 1, Prim Int)
-                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Bool)) )
-                              , TApp
-                                  ( TVar ("k", Arrow (Prim Int, Prim Int))
-                                  , TConst (CInt 1, Prim Int)
-                                  , Prim Int )
-                              , TApp
-                                  ( TApp
-                                      ( TVar
-                                          ( "fack"
-                                          , Arrow
-                                              ( Prim Int
-                                              , Arrow
-                                                  (Arrow (Prim Int, Prim Int), Prim Int)
-                                              ) )
-                                      , TBinop
-                                          ( Sub
-                                          , TVar ("n", Prim Int)
-                                          , TConst (CInt 1, Prim Int)
-                                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int))
-                                          )
-                                      , Arrow (Arrow (Prim Int, Prim Int), Prim Int) )
-                                  , TApp
-                                      ( TApp
-                                          ( TFun
-                                              ( Arg ("k", Arrow (Prim Int, Prim Int))
-                                              , TFun
-                                                  ( Arg ("n", Prim Int)
-                                                  , TFun
-                                                      ( Arg ("m", Prim Int)
-                                                      , TApp
-                                                          ( TVar
-                                                              ( "k"
-                                                              , Arrow (Prim Int, Prim Int)
-                                                              )
-                                                          , TBinop
-                                                              ( Mul
-                                                              , TVar ("m", Prim Int)
-                                                              , TVar ("n", Prim Int)
-                                                              , Arrow
-                                                                  ( Prim Int
-                                                                  , Arrow
-                                                                      (Prim Int, Prim Int)
-                                                                  ) )
-                                                          , Prim Int )
-                                                      , Arrow (Prim Int, Prim Int) )
-                                                  , Arrow
-                                                      ( Prim Int
-                                                      , Arrow (Prim Int, Prim Int) ) )
-                                              , Arrow
-                                                  ( Arrow (Prim Int, Prim Int)
-                                                  , Arrow
-                                                      ( Prim Int
-                                                      , Arrow (Prim Int, Prim Int) ) ) )
-                                          , TVar ("k", Arrow (Prim Int, Prim Int))
-                                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int))
-                                          )
-                                      , TVar ("n", Prim Int)
-                                      , Arrow (Prim Int, Prim Int) )
-                                  , Prim Int )
-                              , Prim Int )
-                          , Arrow (Arrow (Prim Int, Prim Int), Prim Int) )
-                      , Arrow (Prim Int, Arrow (Arrow (Prim Int, Prim Int), Prim Int)) )
-                  , TApp
-                      ( TApp
-                          ( TVar
-                              ( "fack"
-                              , Arrow
-                                  (Prim Int, Arrow (Arrow (Prim Int, Prim Int), Prim Int))
-                              )
-                          , TVar ("n", Prim Int)
-                          , Arrow (Arrow (Prim Int, Prim Int), Prim Int) )
-                      , TFun
-                          ( Arg ("x", Prim Int)
-                          , TVar ("x", Prim Int)
-                          , Arrow (Prim Int, Prim Int) )
-                      , Prim Int )
-                  , Arrow (Prim Int, Arrow (Arrow (Prim Int, Prim Int), Prim Int)) )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
-    in
-    closure e |> run_closure_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        fac: (int -> int),
-        (TFun: (int -> int) (
-            (n: int),
-            (TLetIn(
-                closure_fun2: (int -> int),
-                (TFun: (int -> int) (
-                    (x: int),
-                    (x: int)
-                )),
-                (TLetIn(
-                    closure_fun1: ((int -> int) -> (int -> (int -> int))),
-                    (TFun: ((int -> int) -> (int -> (int -> int))) (
-                        (k: (int -> int)),
-                        (TFun: (int -> (int -> int)) (
-                            (n: int),
-                            (TFun: (int -> int) (
-                                (m: int),
-                                (TApp: (int -> int) (
-                                    (k: (int -> int)),
-                                    (Mul: (int -> (int -> int)) (
-                                        (m: int),
-                                        (n: int)
-                                    ))
-                                ))
-                            ))
-                        ))
-                    )),
-                    (TLetRecIn(
-                        fack: (int -> ((int -> int) -> int)),
-                        (TFun: (int -> ((int -> int) -> int)) (
-                            (n: int),
-                            (TFun: ((int -> int) -> int) (
-                                (k: (int -> int)),
-                                (TIfThenElse: int
-                                    ((Lte: (int -> (int -> bool)) (
-                                        (n: int),
-                                        (TConst((CInt 1): int))
-                                    )),
-                                    (TApp: (int -> int) (
-                                        (k: (int -> int)),
-                                        (TConst((CInt 1): int))
-                                    )),
-                                    (TApp: int (
-                                        (TApp: (int -> ((int -> int) -> int)) (
-                                            (fack: (int -> ((int -> int) -> int))),
-                                            (Sub: (int -> (int -> int)) (
-                                                (n: int),
-                                                (TConst((CInt 1): int))
-                                            ))
-                                        )),
-                                        (TApp: (int -> int) (
-                                            (TApp: ((int -> int) -> (int -> (int -> int))) (
-                                                (closure_fun1: ((int -> int) -> (int -> (int -> int)))),
-                                                (k: (int -> int))
-                                            )),
-                                            (n: int)
-                                        ))
-                                    ))
-                                ))
-                            ))
-                        )),
-                        (TApp: int (
-                            (TApp: (int -> ((int -> int) -> int)) (
-                                (fack: (int -> ((int -> int) -> int))),
-                                (n: int)
-                            )),
-                            (closure_fun2: (int -> int))
-                        ))
-                    ))
-                ))
-            ))
-        ))
-    ))
- |}]
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_x"
-                  , TBinop
-                      ( Add
-                      , TVar ("x", Prim Int)
-                      , TConst (CInt 1, Prim Int)
-                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                  , TLetIn
-                      ( "new_sum"
-                      , TBinop
-                          ( Add
-                          , TVar ("new_x", Prim Int)
-                          , TConst (CInt 1, Prim Int)
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , TVar ("new_sum", Prim Int)
-                      , Prim Int )
-                  , Prim Int )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
-    in
-    closure e |> run_closure_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TLetIn(
-                new_x: int,
-                (Add: (int -> (int -> int)) (
-                    (x: int),
-                    (TConst((CInt 1): int))
-                )),
-                (TLetIn(
-                    new_sum: int,
-                    (Add: (int -> (int -> int)) (
-                        (new_x: int),
-                        (TConst((CInt 1): int))
-                    )),
-                    (new_sum: int)
-                ))
-            ))
-        ))
-    ))
- |}]
 ;;
