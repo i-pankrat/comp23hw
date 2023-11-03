@@ -5,13 +5,8 @@
 module Counter = struct
   let count = ref 0
 
-  let count_next () =
-    incr count;
-    !count
-  ;;
-
   let genid x =
     incr count;
-    x ^ string_of_int !count
+    Format.sprintf "%s%d" x !count
   ;;
 end
