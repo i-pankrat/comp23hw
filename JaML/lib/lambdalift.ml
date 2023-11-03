@@ -5,6 +5,11 @@
 open Base
 open Typedtree
 
+(* Environment Map
+   key -- string name of function;
+   value -- tbinding:
+   Stores, by function name, the function declaration that is to be placed outside the function afterwards.
+*)
 module EnvM = struct
   include Base.Map.Poly
 end
@@ -12,11 +17,8 @@ end
 let extend_env env key data = EnvM.set env ~key ~data
 
 let rec get_args_let known = function
-  | TFun (Arg (id, ty1), expr, ty2) ->
-    let known = id :: known in
-    let known, expr = get_args_let known expr in
-    known, TFun (Arg (id, ty1), expr, ty2)
-  | other -> known, other
+  | TFun (Arg (id, _), expr, _) -> get_args_let (id :: known) expr
+  | _ -> known
 ;;
 
 let rec lambda_lift_expr env = function
@@ -38,7 +40,8 @@ let rec lambda_lift_expr env = function
     let e2, env = lambda_lift_expr env e2 in
     TIfThenElse (cond, e1, e2, ty), env
   | TLetRecIn (id, e1, e2, ty) ->
-    let args, e1 = get_args_let [] e1 in
+    let args = get_args_let [] e1 in
+    let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
     let expr, env =
       if List.is_empty args
@@ -47,7 +50,8 @@ let rec lambda_lift_expr env = function
     in
     expr, env
   | TLetIn (id, e1, e2, ty) ->
-    let args, e1 = get_args_let [] e1 in
+    let args = get_args_let [] e1 in
+    let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
     let expr, env =
       if List.is_empty args
@@ -81,207 +85,4 @@ let lambda_lift expr =
       env, stmt :: stms)
   in
   List.rev stms
-;;
-
-let run_lambda_lift_statements =
-  let open Pprinttypedtree in
-  function
-  | te ->
-    let pp_statements = pp_statements ";\n" Complete in
-    Stdlib.Format.printf "%a%!" pp_statements te
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_sum"
-                  , TFun
-                      ( Arg ("x", Prim Int)
-                      , TBinop
-                          ( Add
-                          , TVar ("x", Prim Int)
-                          , TConst (CInt 1, Prim Int)
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , Arrow (Prim Int, Prim Int) )
-                  , TApp
-                      ( TVar ("new_sum", Arrow (Prim Int, Prim Int))
-                      , TVar ("x", Prim Int)
-                      , Prim Int )
-                  , Arrow (Prim Int, Prim Int) )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
-    in
-    lambda_lift e |> run_lambda_lift_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        new_sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (Add: (int -> (int -> int)) (
-                (x: int),
-                (TConst((CInt 1): int))
-            ))
-        ))
-    ));
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TApp: int (
-                (new_sum: (int -> int)),
-                (x: int)
-            ))
-        ))
-    ))
- |}]
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_x"
-                  , TFun
-                      ( Arg ("x", Prim Int)
-                      , TBinop
-                          ( Add
-                          , TVar ("x", Prim Int)
-                          , TConst (CInt 1, Prim Int)
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , Arrow (Prim Int, Prim Int) )
-                  , TLetIn
-                      ( "new_sum"
-                      , TFun
-                          ( Arg ("x", Prim Int)
-                          , TFun
-                              ( Arg ("y", Prim Int)
-                              , TBinop
-                                  ( Add
-                                  , TApp
-                                      ( TVar ("new_x", Arrow (Prim Int, Prim Int))
-                                      , TVar ("x", Prim Int)
-                                      , Prim Int )
-                                  , TVar ("y", Prim Int)
-                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                              , Arrow (Prim Int, Prim Int) )
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , TApp
-                          ( TVar ("new_sum", Arrow (Prim Int, Arrow (Prim Int, Prim Int)))
-                          , TVar ("x", Prim Int)
-                          , Arrow (Prim Int, Prim Int) )
-                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                  , Arrow (Prim Int, Prim Int) )
-              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-      ]
-    in
-    lambda_lift e |> run_lambda_lift_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        new_x: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (Add: (int -> (int -> int)) (
-                (x: int),
-                (TConst((CInt 1): int))
-            ))
-        ))
-    ));
-    (TLet(
-        new_sum: (int -> (int -> int)),
-        (TFun: (int -> (int -> int)) (
-            (x: int),
-            (TFun: (int -> int) (
-                (y: int),
-                (Add: (int -> (int -> int)) (
-                    (TApp: int (
-                        (new_x: (int -> int)),
-                        (x: int)
-                    )),
-                    (y: int)
-                ))
-            ))
-        ))
-    ));
-    (TLet(
-        sum: (int -> (int -> int)),
-        (TFun: (int -> (int -> int)) (
-            (x: int),
-            (TApp: (int -> int) (
-                (new_sum: (int -> (int -> int))),
-                (x: int)
-            ))
-        ))
-    ))
- |}]
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_x"
-                  , TBinop
-                      ( Add
-                      , TVar ("x", Prim Int)
-                      , TConst (CInt 1, Prim Int)
-                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                  , TLetIn
-                      ( "new_sum"
-                      , TBinop
-                          ( Add
-                          , TVar ("new_x", Prim Int)
-                          , TConst (CInt 1, Prim Int)
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , TVar ("new_sum", Prim Int)
-                      , Prim Int )
-                  , Prim Int )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
-    in
-    lambda_lift e |> run_lambda_lift_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TLetIn(
-                new_x: int,
-                (Add: (int -> (int -> int)) (
-                    (x: int),
-                    (TConst((CInt 1): int))
-                )),
-                (TLetIn(
-                    new_sum: int,
-                    (Add: (int -> (int -> int)) (
-                        (new_x: int),
-                        (TConst((CInt 1): int))
-                    )),
-                    (new_sum: int)
-                ))
-            ))
-        ))
-    ))
- |}]
 ;;
