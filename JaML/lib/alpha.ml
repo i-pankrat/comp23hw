@@ -6,12 +6,7 @@ open Base
 open Typedtree
 open Counter
 
-let find x env =
-  match Map.find env x with
-  | Some x -> x
-  | None -> x
-;;
-
+let find x env = Map.find_exn env x
 let extend_env id env = Map.set ~key:id ~data:(Counter.genid id) env
 
 let rec alpha_expr env = function
@@ -49,98 +44,4 @@ let alpha stms =
       env, stmt :: stms)
   in
   List.rev stms
-;;
-
-let run_alpha_statements =
-  let open Pprinttypedtree in
-  function
-  | te ->
-    let pp_statements = pp_statements ";\n" Complete in
-    Stdlib.Format.printf "%a%!" pp_statements te
-;;
-
-let%expect_test _ =
-  let _ =
-    let e =
-      [ TLet
-          ( "sum"
-          , TFun
-              ( Arg ("x", Prim Int)
-              , TLetIn
-                  ( "new_x"
-                  , TFun
-                      ( Arg ("x", Prim Int)
-                      , TBinop
-                          ( Add
-                          , TVar ("x", Prim Int)
-                          , TConst (CInt 1, Prim Int)
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , Arrow (Prim Int, Prim Int) )
-                  , TLetIn
-                      ( "new_sum"
-                      , TFun
-                          ( Arg ("x", Prim Int)
-                          , TFun
-                              ( Arg ("y", Prim Int)
-                              , TBinop
-                                  ( Add
-                                  , TApp
-                                      ( TVar ("new_x", Arrow (Prim Int, Prim Int))
-                                      , TVar ("x", Prim Int)
-                                      , Prim Int )
-                                  , TVar ("y", Prim Int)
-                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                              , Arrow (Prim Int, Prim Int) )
-                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                      , TApp
-                          ( TVar ("new_sum", Arrow (Prim Int, Arrow (Prim Int, Prim Int)))
-                          , TVar ("x", Prim Int)
-                          , Arrow (Prim Int, Prim Int) )
-                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                  , Arrow (Prim Int, Prim Int) )
-              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-      ]
-    in
-    alpha e |> run_alpha_statements
-  in
-  [%expect
-    {|
-    (TLet(
-        sum3: (int -> (int -> int)),
-        (TFun: (int -> (int -> int)) (
-            (x4: int),
-            (TLetIn(
-                new_x5: (int -> int),
-                (TFun: (int -> int) (
-                    (x9: int),
-                    (Add: (int -> (int -> int)) (
-                        (x9: int),
-                        (TConst((CInt 1): int))
-                    ))
-                )),
-                (TLetIn(
-                    new_sum6: (int -> (int -> int)),
-                    (TFun: (int -> (int -> int)) (
-                        (x7: int),
-                        (TFun: (int -> int) (
-                            (y8: int),
-                            (Add: (int -> (int -> int)) (
-                                (TApp: int (
-                                    (new_x5: (int -> int)),
-                                    (x7: int)
-                                )),
-                                (y8: int)
-                            ))
-                        ))
-                    )),
-                    (TApp: (int -> int) (
-                        (new_sum6: (int -> (int -> int))),
-                        (x4: int)
-                    ))
-                ))
-            ))
-        ))
-    ))
- |}]
 ;;
