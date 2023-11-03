@@ -12,6 +12,16 @@ let pp_with_type_statements te =
 ;;
 
 let%expect_test _ =
+  (* Input:
+     let sum x =
+     let new_sum y = x + y in
+     new_sum 5
+
+     Output:
+     let sum x =
+     let new_sum x y = x + y in
+     new_sum x 5
+  *)
   let _ =
     let e =
       [ TLet
@@ -71,43 +81,44 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  (* Input:
+     let x y =
+     let z a = a (y + 1) in
+     z (fun x -> x)
+
+     Output:
+     let x y =
+     let closure_fun1 x = x in
+     let z y a = a (y + 1) in
+     z y closure_fun1
+  *)
   let _ =
     let e =
       [ TLet
-          ( "sum"
+          ( "x"
           , TFun
-              ( Arg ("x", Prim Int)
+              ( Arg ("y", Prim Int)
               , TLetIn
-                  ( "new_sum"
+                  ( "z"
                   , TFun
-                      ( Arg ("y", Prim Int)
-                      , TFun
-                          ( Arg ("z", Tyvar 2)
-                          , TFun
-                              ( Arg ("c", Tyvar 3)
-                              , TBinop
-                                  ( Add
-                                  , TVar ("x", Prim Int)
-                                  , TVar ("y", Prim Int)
-                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                              , Arrow (Tyvar 3, Prim Int) )
-                          , Arrow (Tyvar 2, Arrow (Tyvar 3, Prim Int)) )
-                      , Arrow (Prim Int, Arrow (Tyvar 2, Arrow (Tyvar 3, Prim Int))) )
-                  , TApp
-                      ( TApp
-                          ( TApp
-                              ( TVar
-                                  ( "new_sum"
-                                  , Arrow
-                                      ( Prim Int
-                                      , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) ) )
-                              , TConst (CInt 5, Prim Int)
+                      ( Arg ("a", Arrow (Prim Int, Tyvar 2))
+                      , TApp
+                          ( TVar ("a", Arrow (Prim Int, Tyvar 2))
+                          , TBinop
+                              ( Add
+                              , TVar ("y", Prim Int)
+                              , TConst (CInt 1, Prim Int)
                               , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-                          , TConst (CInt 4, Prim Int)
+                          , Tyvar 2 )
+                      , Arrow (Arrow (Prim Int, Tyvar 2), Tyvar 2) )
+                  , TApp
+                      ( TVar ("z", Arrow (Arrow (Prim Int, Prim Int), Prim Int))
+                      , TFun
+                          ( Arg ("x", Prim Int)
+                          , TVar ("x", Prim Int)
                           , Arrow (Prim Int, Prim Int) )
-                      , TConst (CInt 3, Prim Int)
                       , Prim Int )
-                  , Arrow (Prim Int, Arrow (Tyvar 2, Arrow (Tyvar 3, Prim Int))) )
+                  , Arrow (Arrow (Prim Int, Tyvar 2), Tyvar 2) )
               , Arrow (Prim Int, Prim Int) )
           , Arrow (Prim Int, Prim Int) )
       ]
@@ -117,39 +128,37 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        sum: (int -> int),
+        x: (int -> int),
         (TFun: (int -> int) (
-            (x: int),
+            (y: int),
             (TLetIn(
-                new_sum: (int -> (int -> ('a -> ('b -> int)))),
-                (TFun: (int -> (int -> ('a -> ('b -> int)))) (
+                closure_fun1: (int -> int),
+                (TFun: (int -> int) (
                     (x: int),
-                    (TFun: (int -> ('a -> ('b -> int))) (
+                    (x: int)
+                )),
+                (TLetIn(
+                    z: (int -> ((int -> 'a) -> 'a)),
+                    (TFun: (int -> ((int -> 'a) -> 'a)) (
                         (y: int),
-                        (TFun: ('a -> ('b -> int)) (
-                            (z: 'a),
-                            (TFun: ('b -> int) (
-                                (c: 'b),
+                        (TFun: ((int -> 'a) -> 'a) (
+                            (a: (int -> 'a)),
+                            (TApp: (int -> 'a) (
+                                (a: (int -> 'a)),
                                 (Add: (int -> (int -> int)) (
-                                    (x: int),
-                                    (y: int)
+                                    (y: int),
+                                    (TConst((CInt 1): int))
                                 ))
                             ))
                         ))
-                    ))
-                )),
-                (TApp: int (
-                    (TApp: (int -> int) (
-                        (TApp: (int -> (int -> int)) (
-                            (TApp: (int -> (int -> (int -> ('a -> ('b -> int))))) (
-                                (new_sum: (int -> (int -> (int -> int)))),
-                                (x: int)
-                            )),
-                            (TConst((CInt 5): int))
-                        )),
-                        (TConst((CInt 4): int))
                     )),
-                    (TConst((CInt 3): int))
+                    (TApp: int (
+                        (TApp: (int -> (int -> ((int -> 'a) -> 'a))) (
+                            (z: ((int -> int) -> int)),
+                            (y: int)
+                        )),
+                        (closure_fun1: (int -> int))
+                    ))
                 ))
             ))
         ))
@@ -158,6 +167,24 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  (* Input:
+     let fac n =
+     let rec fack n k =
+     if n<=1 then k 1
+     else fack (n−1) ((fun k n m −> k (m ∗ n)) k n)
+     in
+     fack n (fun x −> x)
+
+     Output:
+     let fac n =
+     let closure_fun3 x = x in
+     let closure_fun2 k n m = k (m * n)
+     let rec fack n k =
+     if n<=1 then k 1
+     else fack (n−1) (closure_fun2 k n)
+     in
+     fack n closure_fun3
+  *)
   let _ =
     let e =
       [ TLet
@@ -265,13 +292,13 @@ let%expect_test _ =
         (TFun: (int -> int) (
             (n: int),
             (TLetIn(
-                closure_fun2: (int -> int),
+                closure_fun3: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
                     (x: int)
                 )),
                 (TLetIn(
-                    closure_fun1: ((int -> int) -> (int -> (int -> int))),
+                    closure_fun2: ((int -> int) -> (int -> (int -> int))),
                     (TFun: ((int -> int) -> (int -> (int -> int))) (
                         (k: (int -> int)),
                         (TFun: (int -> (int -> int)) (
@@ -313,7 +340,7 @@ let%expect_test _ =
                                         )),
                                         (TApp: (int -> int) (
                                             (TApp: ((int -> int) -> (int -> (int -> int))) (
-                                                (closure_fun1: ((int -> int) -> (int -> (int -> int)))),
+                                                (closure_fun2: ((int -> int) -> (int -> (int -> int)))),
                                                 (k: (int -> int))
                                             )),
                                             (n: int)
@@ -327,7 +354,7 @@ let%expect_test _ =
                                 (fack: (int -> ((int -> int) -> int))),
                                 (n: int)
                             )),
-                            (closure_fun2: (int -> int))
+                            (closure_fun3: (int -> int))
                         ))
                     ))
                 ))
@@ -338,6 +365,18 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  (* Input:
+     let sum x =
+     let new_x = x + 1 in
+     let new_sum = new_x + 1 in
+     new_sum
+
+     Output:
+     let sum x =
+     let new_x = x + 1 in
+     let new_sum = new_x + 1 in
+     new_sum
+  *)
   let _ =
     let e =
       [ TLet
