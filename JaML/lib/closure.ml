@@ -24,9 +24,7 @@ module NameS = Stdlib.Set.Make (TS)
    ty -- the final modified function type to which the function should be cast;
    option constr -- used to store let in constructors created from anonymous functions.
    In the constructor we put expr which should be in the (in) part of let in *)
-module EnvM = struct
-  include Base.Map.Poly
-end
+module EnvM = Base.Map.Poly
 
 let find id env = EnvM.find_exn env id
 let extend_env key data env = EnvM.set env ~key ~data
