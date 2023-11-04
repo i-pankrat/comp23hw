@@ -4,6 +4,7 @@
 
 open Base
 open Typedtree
+open Toplevel
 
 (* Environment Map
    key -- string name of function;
@@ -15,57 +16,58 @@ module EnvM = Base.Map.Poly
 let extend_env env key data = EnvM.set env ~key ~data
 
 let rec get_args_let known = function
-  | TFun (Arg (id, _), expr, _) -> get_args_let (id :: known) expr
+  | TFun (Arg (id, ty), expr, _) -> get_args_let (Arg (id, ty) :: known) expr
   | _ -> known
 ;;
 
 let rec lambda_lift_expr env = function
+  | TConst (c, ty) -> LConst (c, ty), env
+  | TVar (x, ty) -> LVar (x, ty), env
+  | TFun (_, expr, _) -> lambda_lift_expr env expr
   | TBinop (op, e1, e2, ty) ->
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
-    TBinop (op, e1, e2, ty), env
-  | TFun (Arg (id, ty1), expr, ty2) ->
-    let expr, env = lambda_lift_expr env expr in
-    TFun (Arg (id, ty1), expr, ty2), env
+    LBinop (op, e1, e2, ty), env
   | TApp (fst, scd, ty) ->
     let fst, env = lambda_lift_expr env fst in
     let scd, env = lambda_lift_expr env scd in
-    TApp (fst, scd, ty), env
+    LApp (fst, scd, ty), env
   | TIfThenElse (cond, e1, e2, ty) ->
     let cond, env = lambda_lift_expr env cond in
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
-    TIfThenElse (cond, e1, e2, ty), env
+    LIfThenElse (cond, e1, e2, ty), env
   | TLetRecIn (id, e1, e2, ty) ->
-    let args = get_args_let [] e1 in
+    let args = List.rev @@ get_args_let [] e1 in
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
     let expr, env =
       if List.is_empty args
-      then TLetRecIn (id, e1, e2, ty), env
-      else e2, extend_env env id (TLetRec (id, e1, ty))
+      then LLetRecIn (id, e1, e2, ty), env
+      else e2, extend_env env id (LLetRec (id, args, e1, ty))
     in
     expr, env
   | TLetIn (id, e1, e2, ty) ->
-    let args = get_args_let [] e1 in
+    let args = List.rev @@ get_args_let [] e1 in
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
     let expr, env =
       if List.is_empty args
-      then TLetIn (id, e1, e2, ty), env
-      else e2, extend_env env id (TLet (id, e1, ty))
+      then LLetIn (id, e1, e2, ty), env
+      else e2, extend_env env id (LLet (id, args, e1, ty))
     in
     expr, env
-  | other -> other, env (* TConst, TVar *)
 ;;
 
 let lambda_lift_bindings env = function
   | TLet (id, expr, ty) ->
+    let args = List.rev @@ get_args_let [] expr in
     let expr, env = lambda_lift_expr env expr in
-    TLet (id, expr, ty), env
+    LLet (id, args, expr, ty), env
   | TLetRec (id, expr, ty) ->
+    let args = List.rev @@ get_args_let [] expr in
     let expr, env = lambda_lift_expr env expr in
-    TLetRec (id, expr, ty), env
+    LLetRec (id, args, expr, ty), env
 ;;
 
 let lambda_lift expr =
