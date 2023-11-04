@@ -2,14 +2,11 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-open Jaml_lib
+open Jaml_lib.Lambdalift
 open Jaml_lib.Typedtree
+open Jaml_lib.Toplevel
 
-let pp_with_type_statements te =
-  let open Pprinttypedtree in
-  let pp_statements = pp_statements ";\n" Complete in
-  Format.printf "%a%!" pp_statements te
-;;
+let print_llstatements program = Format.printf "%s" (show_llstatements program)
 
 let%expect_test _ =
   (* Input:
@@ -47,30 +44,19 @@ let%expect_test _ =
           , Arrow (Prim Int, Prim Int) )
       ]
     in
-    Lambdalift.lambda_lift e |> pp_with_type_statements
+    lambda_lift e |> print_llstatements
   in
   [%expect
     {|
-    (TLet(
-        new_sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (Add: (int -> (int -> int)) (
-                (x: int),
-                (TConst((CInt 1): int))
-            ))
-        ))
-    ));
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TApp: int (
-                (new_sum: (int -> int)),
-                (x: int)
-            ))
-        ))
-    ))
+    [(LLet ("new_sum", [(Arg ("x", (Prim int)))],
+        (LBinop (Add, (LVar ("x", (Prim int))), (LConst ((CInt 1), (Prim int))),
+           (Arrow ((Prim int), (Arrow ((Prim int), (Prim int))))))),
+        (Arrow ((Prim int), (Prim int)))));
+      (LLet ("sum", [(Arg ("x", (Prim int)))],
+         (LApp ((LVar ("new_sum", (Arrow ((Prim int), (Prim int))))),
+            (LVar ("x", (Prim int))), (Prim int))),
+         (Arrow ((Prim int), (Prim int)))))
+      ]
  |}]
 ;;
 
@@ -124,40 +110,25 @@ let%expect_test _ =
           , Arrow (Prim Int, Prim Int) )
       ]
     in
-    Lambdalift.lambda_lift e |> pp_with_type_statements
+    lambda_lift e |> print_llstatements
   in
   [%expect
     {|
-    (TLet(
-        new_sum: (int -> (int -> int)),
-        (TFun: (int -> (int -> int)) (
-            (x: int),
-            (TFun: (int -> int) (
-                (var: int),
-                (Add: (int -> (int -> int)) (
-                    (var: int),
-                    (x: int)
-                ))
-            ))
-        ))
-    ));
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TLetIn(
-                var: int,
-                (TConst((CInt 1): int)),
-                (TApp: int (
-                    (TApp: (int -> int) (
-                        (new_sum: (int -> (int -> int))),
-                        (x: int)
-                    )),
-                    (var: int)
-                ))
-            ))
-        ))
-    ))
+    [(LLet ("new_sum", [(Arg ("x", (Prim int))); (Arg ("var", (Prim int)))],
+        (LBinop (Add, (LVar ("var", (Prim int))), (LVar ("x", (Prim int))),
+           (Arrow ((Prim int), (Arrow ((Prim int), (Prim int))))))),
+        (Arrow ((Prim int), (Arrow ((Prim int), (Prim int)))))));
+      (LLet ("sum", [(Arg ("x", (Prim int)))],
+         (LLetIn ("var", (LConst ((CInt 1), (Prim int))),
+            (LApp (
+               (LApp (
+                  (LVar ("new_sum",
+                     (Arrow ((Prim int), (Arrow ((Prim int), (Prim int))))))),
+                  (LVar ("x", (Prim int))), (Arrow ((Prim int), (Prim int))))),
+               (LVar ("var", (Prim int))), (Prim int))),
+            (Prim int))),
+         (Arrow ((Prim int), (Prim int)))))
+      ]
  |}]
 ;;
 
@@ -201,30 +172,22 @@ let%expect_test _ =
           , Arrow (Prim Int, Prim Int) )
       ]
     in
-    Lambdalift.lambda_lift e |> pp_with_type_statements
+    lambda_lift e |> print_llstatements
   in
   [%expect
     {|
-    (TLet(
-        sum: (int -> int),
-        (TFun: (int -> int) (
-            (x: int),
-            (TLetIn(
-                new_x: int,
-                (Add: (int -> (int -> int)) (
-                    (x: int),
-                    (TConst((CInt 1): int))
-                )),
-                (TLetIn(
-                    new_sum: int,
-                    (Add: (int -> (int -> int)) (
-                        (new_x: int),
-                        (TConst((CInt 1): int))
-                    )),
-                    (new_sum: int)
-                ))
-            ))
-        ))
-    ))
+    [(LLet ("sum", [(Arg ("x", (Prim int)))],
+        (LLetIn ("new_x",
+           (LBinop (Add, (LVar ("x", (Prim int))),
+              (LConst ((CInt 1), (Prim int))),
+              (Arrow ((Prim int), (Arrow ((Prim int), (Prim int))))))),
+           (LLetIn ("new_sum",
+              (LBinop (Add, (LVar ("new_x", (Prim int))),
+                 (LConst ((CInt 1), (Prim int))),
+                 (Arrow ((Prim int), (Arrow ((Prim int), (Prim int))))))),
+              (LVar ("new_sum", (Prim int))), (Prim int))),
+           (Prim int))),
+        (Arrow ((Prim int), (Prim int)))))
+      ]
  |}]
 ;;
