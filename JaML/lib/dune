@@ -12,7 +12,8 @@
   Lambdalift
   Alpha
   Closure
-  Counter)
+  Counter
+  Toplevel)
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))
