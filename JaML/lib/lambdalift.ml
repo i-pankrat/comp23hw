@@ -10,9 +10,7 @@ open Typedtree
    value -- tbinding:
    Stores, by function name, the function declaration that is to be placed outside the function afterwards.
 *)
-module EnvM = struct
-  include Base.Map.Poly
-end
+module EnvM = Base.Map.Poly
 
 let extend_env env key data = EnvM.set env ~key ~data
 
