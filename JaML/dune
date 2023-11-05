@@ -10,7 +10,9 @@
  (name jaml)
  (public_name jaml)
  (modules Jaml)
- (libraries JaML.Lib stdio))
+ (libraries JaML.Lib stdio)
+ (instrumentation
+  (backend bisect_ppx)))
 
 (cram
  (deps

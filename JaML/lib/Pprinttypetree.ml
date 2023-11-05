@@ -18,11 +18,7 @@ let rec transform_binder binder =
     Stdlib.Format.sprintf "%s%d" letter div)
 ;;
 
-let add map k v =
-  match Map.add map ~key:k ~data:v with
-  | `Ok a -> a
-  | `Duplicate -> map
-;;
+let add map k v = if Map.mem map k then map else Map.add_exn map ~key:k ~data:v
 
 let get_ty_subs =
   let rec helper subs index = function
