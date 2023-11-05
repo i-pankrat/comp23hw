@@ -13,7 +13,9 @@
   Alpha
   Closure
   Counter
-  Toplevel)
+  Toplevel
+  Anf
+  Anfconv)
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))
