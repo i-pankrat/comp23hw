@@ -75,7 +75,27 @@ let%expect_test _ =
     in
     lambda_lift e |> print_llstatements
   in
-  [%expect {|
+  [%expect
+    {|
+    [(LLet ("id1", [(Arg ("y", (Tyvar 1)))], (LVar ("y", (Tyvar 1))),
+        (Arrow ((Tyvar 1), (Tyvar 1)))));
+      (LLet ("id2", [(Arg ("z", (Tyvar 4)))],
+         (LApp ((LVar ("id1", (Arrow ((Tyvar 4), (Tyvar 4))))),
+            (LVar ("z", (Tyvar 4))), (Arrow ((Tyvar 4), (Tyvar 4))))),
+         (Arrow ((Tyvar 4), (Tyvar 4)))));
+      (LLet ("id3", [(Arg ("w", (Tyvar 7)))],
+         (LApp ((LVar ("id2", (Arrow ((Tyvar 7), (Tyvar 7))))),
+            (LVar ("w", (Tyvar 7))), (Arrow ((Tyvar 7), (Tyvar 7))))),
+         (Arrow ((Tyvar 7), (Tyvar 7)))));
+      (LLet ("id4", [(Arg ("u", (Tyvar 10)))],
+         (LApp ((LVar ("id3", (Arrow ((Tyvar 10), (Tyvar 10))))),
+            (LVar ("u", (Tyvar 10))), (Arrow ((Tyvar 10), (Tyvar 10))))),
+         (Arrow ((Tyvar 10), (Tyvar 10)))));
+      (LLet ("test", [(Arg ("x", (Tyvar 12)))],
+         (LApp ((LVar ("id4", (Arrow ((Tyvar 12), (Tyvar 12))))),
+            (LVar ("x", (Tyvar 12))), (Arrow ((Tyvar 12), (Tyvar 12))))),
+         (Arrow ((Tyvar 12), (Tyvar 12)))))
+      ]
  |}]
 ;;
 

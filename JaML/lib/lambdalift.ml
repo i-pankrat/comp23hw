@@ -72,16 +72,11 @@ let lambda_lift_bindings env = function
 
 let lambda_lift expr =
   let empty = EnvM.empty in
-  let _, stms =
-    List.fold expr ~init:(empty, []) ~f:(fun (env, stms) el ->
-      let stmt, env = lambda_lift_bindings env el in
-      let env, stms =
-        List.fold
-          (List.rev @@ EnvM.to_alist env)
-          ~init:(env, stms)
-          ~f:(fun (env, stms) (key, stmt) -> EnvM.remove env key, stmt :: stms)
-      in
-      env, stmt :: stms)
+  let stms =
+    List.fold expr ~init:[] ~f:(fun stms el ->
+      let stmt, env = lambda_lift_bindings empty el in
+      let mapped_env = List.map ~f:(fun (_, expr) -> expr) (EnvM.to_alist env) in
+      (stmt :: List.rev mapped_env) @ stms)
   in
   List.rev stms
 ;;
