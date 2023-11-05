@@ -52,20 +52,49 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  (* Input: let x x6 = x6 * x6 *)
+  (* Input:
+     let test x y =
+     let x = x * x in
+     let y = y * y in
+     x * y
+
+     Output:
+     let test7 x8 y9 =
+     let x10 = x8 * x8 in
+     let y11 = y9 * y9 in
+     x10 * y11*)
   let _ =
     let e =
       [ TLet
-          ( "x"
+          ( "test"
           , TFun
-              ( Arg ("x6", Prim Int)
-              , TBinop
-                  ( Mul
-                  , TVar ("x6", Prim Int)
-                  , TVar ("x6", Prim Int)
-                  , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
+              ( Arg ("x", Prim Int)
+              , TFun
+                  ( Arg ("y", Prim Int)
+                  , TLetIn
+                      ( "x"
+                      , TBinop
+                          ( Mul
+                          , TVar ("x", Prim Int)
+                          , TVar ("x", Prim Int)
+                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                      , TLetIn
+                          ( "y"
+                          , TBinop
+                              ( Mul
+                              , TVar ("y", Prim Int)
+                              , TVar ("y", Prim Int)
+                              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                          , TBinop
+                              ( Mul
+                              , TVar ("x", Prim Int)
+                              , TVar ("y", Prim Int)
+                              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+                          , Prim Int )
+                      , Prim Int )
+                  , Arrow (Prim Int, Prim Int) )
+              , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
+          , Arrow (Prim Int, Arrow (Prim Int, Prim Int)) )
       ]
     in
     Alpha.alpha e |> pp_with_type_statements
@@ -73,12 +102,29 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        x1: (int -> int),
-        (TFun: (int -> int) (
-            (x62: int),
-            (Mul: (int -> (int -> int)) (
-                (x62: int),
-                (x62: int)
+        test7: (int -> (int -> int)),
+        (TFun: (int -> (int -> int)) (
+            (x8: int),
+            (TFun: (int -> int) (
+                (y9: int),
+                (TLetIn(
+                    x10: int,
+                    (Mul: (int -> (int -> int)) (
+                        (x8: int),
+                        (x8: int)
+                    )),
+                    (TLetIn(
+                        y11: int,
+                        (Mul: (int -> (int -> int)) (
+                            (y9: int),
+                            (y9: int)
+                        )),
+                        (Mul: (int -> (int -> int)) (
+                            (x10: int),
+                            (y11: int)
+                        ))
+                    ))
+                ))
             ))
         ))
     ))

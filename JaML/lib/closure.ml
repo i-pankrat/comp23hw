@@ -153,22 +153,20 @@ and closure_expr env known expr =
   | other -> other, known, env
 ;;
 
-let closure_bindings env = function
+let closure_bindings = function
   | TLet (id, expr, ty) ->
-    let expr, _, env = get_args_let env NameS.empty expr in
-    TLet (id, expr, ty), env
+    let expr, _, _ = get_args_let EnvM.empty NameS.empty expr in
+    TLet (id, expr, ty)
   | TLetRec (id, expr, ty) ->
-    let expr, _, env = get_args_let env (NameS.singleton (id, ty)) expr in
-    TLetRec (id, expr, ty), env
+    let expr, _, _ = get_args_let EnvM.empty (NameS.singleton (id, ty)) expr in
+    TLetRec (id, expr, ty)
 ;;
 
 let closure expr =
-  reset 0;
-  let empty = EnvM.empty in
-  let _, stms =
-    List.fold expr ~init:(empty, []) ~f:(fun (env, stms) el ->
-      let stmt, env = closure_bindings env el in
-      env, stmt :: stms)
+  let stms =
+    List.fold expr ~init:[] ~f:(fun stms el ->
+      let stmt = closure_bindings el in
+      stmt :: stms)
   in
   List.rev stms
 ;;

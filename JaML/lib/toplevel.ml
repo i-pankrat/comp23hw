@@ -5,6 +5,10 @@
 open Typetree
 open Ast
 
+(** Almost the same ast as Typedtree.
+    Changes: Arguments in let and let rec are represented by a list of arguments.
+    There are no TFuns, so anonymous functions are not expressible. *)
+
 type arg = Arg of string * ty (** Typed function argument *)
 [@@deriving show { with_path = false }]
 
