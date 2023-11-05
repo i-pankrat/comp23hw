@@ -4,10 +4,10 @@
 
 open Base
 open Typedtree
-open Counter
+open Counter.Counter
 
 let find x env = Map.find_exn env x
-let extend_env id env = Map.set ~key:id ~data:(Counter.genid id) env
+let extend_env id env = Map.set ~key:id ~data:(genid id) env
 
 let rec alpha_expr env = function
   | TVar (x, ty) -> TVar (find x env, ty)
@@ -37,6 +37,7 @@ let alpha_bindings env = function
 ;;
 
 let alpha stms =
+  reset 0;
   let empty = Map.empty (module Base.String) in
   let _, stms =
     List.fold stms ~init:(empty, []) ~f:(fun (env, stms) el ->
