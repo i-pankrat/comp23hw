@@ -36,14 +36,14 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        name4: (int -> (int -> int)),
+        name1: (int -> (int -> int)),
         (TFun: (int -> (int -> int)) (
-            (x5: int),
+            (x2: int),
             (TFun: (int -> int) (
-                (y6: int),
+                (y3: int),
                 (Add: (int -> (int -> int)) (
-                    (x5: int),
-                    (y6: int)
+                    (x2: int),
+                    (y3: int)
                 ))
             ))
         ))
@@ -73,12 +73,12 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        x7: (int -> int),
+        x1: (int -> int),
         (TFun: (int -> int) (
-            (x68: int),
+            (x62: int),
             (Mul: (int -> (int -> int)) (
-                (x68: int),
-                (x68: int)
+                (x62: int),
+                (x62: int)
             ))
         ))
     ))
