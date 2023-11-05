@@ -6,11 +6,13 @@ open Anf
 open Toplevel
 open Ast
 
+(* Simply convert type from const to immexpr *)
 let const_to_immexpr = function
   | CInt i -> ImmNum i
   | CBool b -> ImmBool b
 ;;
 
+(* Maps binary operations from ast.ml to binary operations from anf.ml*)
 let binop_to_cexpr_constr op e1 e2 =
   match op with
   | Add -> CPlus (e1, e2)
@@ -28,6 +30,10 @@ let binop_to_cexpr_constr op e1 e2 =
   | Lte -> CLte (e1, e2)
 ;;
 
+(*
+   Converts llexpr to aexpr
+   Argument expr_with_hole helps to create anf tree in cps
+*)
 let anf_expr (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
   let open Counter.Counter in
   let fresh name = genid name in
@@ -59,6 +65,7 @@ let anf_expr (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
   helper e expr_with_hole
 ;;
 
+(* Performs transformation from llbinding to anfexpr *)
 let anf_binding = function
   | (LLet (name, args, expr, _) | LLetRec (name, args, expr, _)) as binding ->
     let binding_to_anf_expr = function
@@ -76,4 +83,5 @@ let anf_binding = function
     constructor name args (anf_expr expr (fun imm -> ACEexpr (CImmExpr imm)))
 ;;
 
+(* Performs transformation from Toplevel.llstatements to Anf.anfstatements *)
 let anf lstatements = List.map (fun lbinding -> anf_binding lbinding) lstatements
