@@ -1,0 +1,31 @@
+(lang dune 3.11)
+
+(name winml)
+
+(generate_opam_files true)
+
+(source
+ (github lastdesire/comp23hw))
+
+(authors "Vyacheslav Buchin and Artur Gagin")
+
+(maintainers "github.com/lastdesire")
+
+(license LGPL-2.1)
+
+(using menhir 2.0)
+
+(documentation https://url/to/documentation)
+
+(package
+ (name winml)
+ (synopsis "MiniML compiler")
+ (description "SPbU MiniML compiler project")
+ (depends
+  (ocaml
+   (>= 5.0))
+  dune)
+ (tags
+  ("MiniML" "Compiler" "OCaml" "Project")))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

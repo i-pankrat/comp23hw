@@ -1,0 +1,25 @@
+(ocamllex
+ (modules lexer))
+
+(menhir
+ (modules parser)
+ (flags --table)
+ (infer false))
+
+(rule
+ (targets parser_messages.ml)
+ (deps parser.messages parser.mly)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run menhir --compile-errors %{deps}))))
+
+(library
+ (name winml)
+ (public_name winml)
+ (libraries menhirLib base monads)
+ (inline_tests)
+ (preprocess
+  (pps ppx_deriving.show ppx_inline_test)))
+
+(include_subdirs unqualified)

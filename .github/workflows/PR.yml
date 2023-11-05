@@ -5,7 +5,7 @@ on:
     branches:
       - 'master'
 env:
-  OPAMROOT: /home/user/.opam
+  OPAMROOT: /home/opam/.opam
   OPAMCONFIRMLEVEL: unsafe-yes
 
 jobs:
@@ -86,6 +86,14 @@ jobs:
           cd ${{ env.latest }} && mkdir -p ${{ env.LINTS_PATH }}
           echo "ZANUDA_REPORT_FILE_PATH=${{ env.LINTS_PATH }}/lints.txt" >> $GITHUB_ENV
 
+      - run: |
+          echo ${{ env.latest }}          > projectname.txt
+          echo ${{ github.event.number }} > PR_number.txt
+      - run: |
+          echo ${{ env.latest }}          > ${{ env.latest }}/projectname.txt
+          echo ${{ github.event.number }} > ${{ env.latest }}/PR_number.txt
+
+
       ###################### Coverage #####################################
 
       - name: Calculating coverage (1/2)
@@ -111,27 +119,18 @@ jobs:
           BISECT_DIR: /tmp/bisect_ppx_data
           BISECT_FILE: /tmp/bisect_ppx_data/data
 
+      - run: echo ${{ env.latest }} > ${{ env.latest }}/_coverage/projectname.txt
       - name: Update coverage artifact ${{ steps.calc-coverage.outputs.percent }}
         uses: actions/upload-artifact@v3
         with:
           name: coverage
           path: ${{ env.latest }}/_coverage
 
+
 # API doc
 
       - name: Build API documentation for ${{ env.latest }}...
         run: cd ${{ env.latest }} && opam exec -- dune build @doc --profile=release
-
-      - run: |
-          ls
-          echo '==========='
-          ls ${{ env.latest }}
-      - run: |
-          echo ${{ env.latest }}          > projectname.txt
-          echo ${{ github.event.number }} > PR_number.txt
-      - run: |
-          echo ${{ env.latest }}          > ${{ env.latest }}/projectname.txt
-          echo ${{ github.event.number }} > ${{ env.latest }}/PR_number.txt
 
       - name: Update docs artifact
         uses: actions/upload-artifact@v3
@@ -151,7 +150,7 @@ jobs:
       - name: Running linter in ${{ env.latest }}...
         run: |
           mkdir -p ${{ env.latest }}/_build/default/_found_lints
-          cd ${{ env.latest }} && opam exec -- zanuda -no-mutable_hashtables -dir . -add-prefix ${{ env.latest }}/ -ordjsonl ${{ env.RDJSON_FILE_PATH }} > ${{ env.ZANUDA_REPORT_FILE_PATH }}
+          cd ${{ env.latest }} && opam exec -- zanuda -no-mutable_hashtables -no-no_toplevel_eval -dir . -add-prefix ${{ env.latest }}/ -ordjsonl ${{ env.RDJSON_FILE_PATH }} > ${{ env.ZANUDA_REPORT_FILE_PATH }}
 
       - run: cat ${{ env.latest }}/${{ env.RDJSON_FILE_PATH }}
 
@@ -196,4 +195,3 @@ jobs:
             jscpd_report.txt
             PR_number.txt
             projectname.txt
-

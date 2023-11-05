@@ -1,0 +1,357 @@
+exp: THEN
+##
+## Ends in an error in state: 0.
+##
+## exp' -> . exp [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET THEN
+##
+## Ends in an error in state: 1.
+##
+## exp -> LET . REC func EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## LET
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC THEN
+##
+## Ends in an error in state: 2.
+##
+## exp -> LET REC . func EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## LET REC
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT THEN
+##
+## Ends in an error in state: 3.
+##
+## func -> IDENT . func_args EQUAL expr [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## IDENT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT THEN
+##
+## Ends in an error in state: 4.
+##
+## func_args -> IDENT . func_args [ EQUAL ]
+## func_args -> IDENT . [ EQUAL ]
+##
+## The known suffix of the stack is as follows:
+## IDENT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL THEN
+##
+## Ends in an error in state: 7.
+##
+## func -> IDENT func_args EQUAL . expr [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## IDENT func_args EQUAL
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL LPAREN THEN
+##
+## Ends in an error in state: 8.
+##
+## _expr -> LPAREN . expr RPAREN [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IF THEN
+##
+## Ends in an error in state: 10.
+##
+## expr -> IF . expr THEN expr ELSE expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IF IDENT RPAREN
+##
+## Ends in an error in state: 12.
+##
+## expr -> IF expr . THEN expr ELSE expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . EQUAL_EQUAL expr [ THEN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . PLUS expr [ THEN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . MINUS expr [ THEN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . MULT expr [ THEN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . _expr app_args [ THEN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . _expr [ THEN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+##
+## The known suffix of the stack is as follows:
+## IF expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IF IDENT THEN THEN
+##
+## Ends in an error in state: 13.
+##
+## expr -> IF expr THEN . expr ELSE expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF expr THEN
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IF IDENT THEN IDENT THEN
+##
+## Ends in an error in state: 14.
+##
+## expr -> IF expr THEN expr . ELSE expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . EQUAL_EQUAL expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ELSE ]
+## expr -> expr . PLUS expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ELSE ]
+## expr -> expr . MINUS expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ELSE ]
+## expr -> expr . MULT expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ELSE ]
+## expr -> expr . _expr app_args [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ELSE ]
+## expr -> expr . _expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF expr THEN expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT PLUS THEN
+##
+## Ends in an error in state: 15.
+##
+## expr -> expr PLUS . expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr PLUS
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT PLUS IDENT REC
+##
+## Ends in an error in state: 16.
+##
+## expr -> expr . EQUAL_EQUAL expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . PLUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr PLUS expr . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MINUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MULT expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr app_args [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr PLUS expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT MULT THEN
+##
+## Ends in an error in state: 17.
+##
+## expr -> expr MULT . expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr MULT
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT MULT IDENT REC
+##
+## Ends in an error in state: 18.
+##
+## expr -> expr . EQUAL_EQUAL expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . PLUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MINUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MULT expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr MULT expr . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr app_args [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr MULT expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT IDENT REC
+##
+## Ends in an error in state: 19.
+##
+## expr -> expr _expr . app_args [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr _expr . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr _expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT IDENT IDENT REC
+##
+## Ends in an error in state: 20.
+##
+## app_args -> app_args . _expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr _expr app_args . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr _expr app_args
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT MINUS THEN
+##
+## Ends in an error in state: 24.
+##
+## expr -> expr MINUS . expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr MINUS
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT MINUS IDENT REC
+##
+## Ends in an error in state: 25.
+##
+## expr -> expr . EQUAL_EQUAL expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . PLUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MINUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr MINUS expr . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MULT expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr app_args [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr MINUS expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT EQUAL_EQUAL THEN
+##
+## Ends in an error in state: 26.
+##
+## expr -> expr EQUAL_EQUAL . expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr EQUAL_EQUAL
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT EQUAL_EQUAL IDENT REC
+##
+## Ends in an error in state: 27.
+##
+## expr -> expr . EQUAL_EQUAL expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr EQUAL_EQUAL expr . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . PLUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MINUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MULT expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr app_args [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## expr EQUAL_EQUAL expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IF IDENT THEN IDENT ELSE THEN
+##
+## Ends in an error in state: 28.
+##
+## expr -> IF expr THEN expr ELSE . expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF expr THEN expr ELSE
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IF IDENT THEN IDENT ELSE IDENT REC
+##
+## Ends in an error in state: 29.
+##
+## expr -> IF expr THEN expr ELSE expr . [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . EQUAL_EQUAL expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . PLUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MINUS expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . MULT expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr app_args [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . _expr [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+##
+## The known suffix of the stack is as follows:
+## IF expr THEN expr ELSE expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL LPAREN IDENT THEN
+##
+## Ends in an error in state: 30.
+##
+## _expr -> LPAREN expr . RPAREN [ THEN RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ELSE ]
+## expr -> expr . EQUAL_EQUAL expr [ RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . PLUS expr [ RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . MINUS expr [ RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . MULT expr [ RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . _expr app_args [ RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+## expr -> expr . _expr [ RPAREN PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+
+exp: LET REC IDENT IDENT EQUAL IDENT THEN
+##
+## Ends in an error in state: 32.
+##
+## expr -> expr . EQUAL_EQUAL expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ]
+## expr -> expr . PLUS expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ]
+## expr -> expr . MINUS expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ]
+## expr -> expr . MULT expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ]
+## expr -> expr . _expr app_args [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ]
+## expr -> expr . _expr [ PLUS MULT MINUS LPAREN INT IDENT EQUAL_EQUAL EOF ]
+## func -> IDENT func_args EQUAL expr . [ EOF ]
+##
+## The known suffix of the stack is as follows:
+## IDENT func_args EQUAL expr
+##
+
+<YOUR SYNTAX ERROR MESSAGE HERE>
+

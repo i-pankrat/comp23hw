@@ -9,7 +9,7 @@ on:
       - completed
 
 env:
-  OPAMROOT: /home/user/.opam
+  OPAMROOT: /home/opam/.opam
   OPAMCONFIRMLEVEL: unsafe-yes
   #DOCKERIMAGE: kakadu18/ocaml:llvm14
 
@@ -21,10 +21,17 @@ jobs:
       options: --user root
     permissions:
       pull-requests: write
-    if: >
-      ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
+    if: ${{( github.event.workflow_run.event == 'pull_request') && (github.event.workflow_run.conclusion == 'success') }}
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1                # fix me later
+          submodules: false
+
+
+      - run: echo "${{ (github.event.workflow_run.event == 'pull_request') && (github.event.workflow_run.conclusion == 'success') }}"
       - run: echo "conclusion  = ${{ github.event.workflow_run.conclusion }}"
 
       - run: echo "event = ${{ github.event.workflow_run.event }}"
@@ -36,19 +43,7 @@ jobs:
           name: review
 
 
-      # TODO: Maybe status checks is not what I want...
-      - name: Install GH CLI
-        uses: dev-hanz-ops/install-gh-cli-action@v0.1.0
-        if: false
-
-      # https://stackoverflow.com/a/72532196
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
-        if: false
-
-      - run: >
-          echo '{"name":"PR postprocess","head_sha":"${{ github.sha }}"}' |
-            gh api /repos/Kakadu/${{ github.event.repository.name }}/check-runs --input -
-        if: false
+      - run: ls
 
       - run: |
           echo "LANG_NAME=$(cat projectname.txt)" >> $GITHUB_ENV
@@ -93,7 +88,7 @@ jobs:
           external_repository: Kakadu/fp2021-ci-artifacts
           publish_branch: master
           keep_files: true
-          destination_dir: 2023comp/${{ env.PIARAST_NAME }}/
+          destination_dir: 2023comp/${{ env.LANG_NAME }}/
           # generate new token
           # https://github.com/settings/tokens
           # put it here
@@ -110,69 +105,70 @@ jobs:
 
       #- run: cat text.md
 
-      - name: Escaping markdown
-        #if: false
-        run: cat text.md | sed -e 's/%/%25/' | perl -pe 's/\n/%0A/g' > text.escaped.md
-
-      - name: Read file contents
-        #if: false
-        id: read-escaped-markdown
-        uses: andstor/file-reader-action@v1
-        with:
-          path: text.md
-
-      - name: contents of escaped file
-        #if: false
-        run: cat text.escaped.md
-
-      #- name: contents of a variable
-      #  run: echo ${{ steps.read-escaped-markdown.outputs.contents }}
-
       - name: Find a comment with linter report
         uses: peter-evans/find-comment@v2
-        id: fc
+        id: fc-linter
         with:
           issue-number: ${{ env.CI_PULL_REQUEST }}
           body-includes: Linter report from
-          comment-author: github-actions[bot]
+          comment-author: Kakadu
 
-      - name: Tracing ${{ steps.fc.outputs.comment-id }}
-        run: echo "${{ steps.fc.outputs.comment-id }}"
+      - name: Tracing ${{ steps.fc-linter.outputs.comment-id }}
+        run: echo "${{ steps.fc-linter.outputs.comment-id }}"
+
+      - name: Manually remove comment '${{ steps.fc-linter.outputs.comment-id }}' with lints
+        if: ${{ steps.fc-linter.outputs.comment-id != 0 }}
+        run: |
+          opam exec -- ocaml .github/add_comment.ml \
+            -token ${{ secrets.CLASSIC_TOKEN }} \
+            -issue ${{ env.CI_PULL_REQUEST }} \
+            -delete-comment ${{ steps.fc-linter.outputs.comment-id }} \
+            -user Kakadu \
+            -repo comp23hw
 
       # The way to remove comments changes to prevent pulling extra docker image should exist.
-      - name: Delete old comment
-        uses: jungwinter/comment@v1
-        if: ${{ steps.fc.outputs.comment-id != 0 }}
-        with:
-          type: delete
-          comment_id: ${{ steps.fc.outputs.comment-id }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+      #- name: Delete old comment
+      #  uses: jungwinter/comment@v1
+      #  if: ${{ steps.fc.outputs.comment-id != 0 }}
+      #  with:
+      #    type: delete
+      #    comment_id: ${{ steps.fc.outputs.comment-id }}
+      #    token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create comment
-        uses: mshick/add-pr-comment@v2
-        with:
-          message: ${{ steps.read-escaped-markdown.outputs.contents }}
-          issue: ${{ env.CI_PULL_REQUEST }}
-          repo-owner: Kakadu
-          repo-name: comp23hw
-          #refresh-message-position: true
-          proxy-url: https://add-pr-comment-proxy-94idvmwyie-uc.a.run.app
+#      - name: Create comment
+#        uses: mshick/add-pr-comment@v2
+#        with:
+#          message: ${{ steps.read-escaped-markdown.outputs.contents }}
+#          issue: ${{ env.CI_PULL_REQUEST }}
+#          repo-owner: Kakadu
+#          repo-name: comp23hw
+#          #refresh-message-position: true
+#          proxy-url: https://add-pr-comment-proxy-94idvmwyie-uc.a.run.app
 
-      - uses: mshick/add-pr-comment@v2
-        with:
-          message: Hello from lints
-          issue: ${{ env.CI_PULL_REQUEST }}
-          repo-token: ${{ secrets.CLASSIC_TOKEN }}
-          repo-owner: Kakadu
-          repo-name: comp23hw
-          proxy-url: https://add-pr-comment-proxy-94idvmwyie-uc.a.run.app
+#      - uses: mshick/add-pr-comment@v2
+#        with:
+#          message: Hello from lints
+#          issue: ${{ env.CI_PULL_REQUEST }}
+#          repo-token: ${{ secrets.CLASSIC_TOKEN }}
+#          repo-owner: Kakadu
+#          repo-name: comp23hw
+#          proxy-url: https://add-pr-comment-proxy-94idvmwyie-uc.a.run.app
+
+      - run: opam list
+      - name: manual adding of a comment from text.md
+        run: opam exec -- ocaml .github/add_comment.ml -file text.md -token ${{ secrets.CLASSIC_TOKEN }} -issue ${{ env.CI_PULL_REQUEST }}
+
 
   ###################################################################################################
   upload_docs:
     runs-on: ubuntu-latest
-    if: >
-      ${{ github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success' }}
+    container:
+      image: kakadu18/ocaml:llvm14
+      options: --user root
+    permissions:
+      pull-requests: write
+    if: ${{( github.event.workflow_run.event == 'pull_request') && (github.event.workflow_run.conclusion == 'success') }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -215,12 +211,12 @@ jobs:
 
       - name: Find Comment
         uses: peter-evans/find-comment@v2
-        id: fc
+        id: fc-docs
         if: ${{ always() }}
         with:
           issue-number: ${{ env.PR_NUMBER }}
-          body-includes: Документация построена
-          comment-author: github-actions[bot]
+          body-includes: Документация и тестовое покрытие
+          comment-author: Kakadu
 
       #- run: |
       #    echo "${{ steps.fc.outputs.comment-id }}"
@@ -229,37 +225,38 @@ jobs:
       #    echo "${{ steps.fc.outputs.comment-created-at }}"
 
       # The way to remove comments changes to prevent pulling extra docker image should exist.
-      - name: Delete old comment
-        uses: jungwinter/comment@v1
-        if: ${{ steps.fc.outputs.comment-id != 0 }}
-        with:
-          type: delete
-          comment_id: ${{ steps.fc.outputs.comment-id }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+      #- name: Delete old comment
+      #  uses: jungwinter/comment@v1
+      #  if: ${{ steps.fc.outputs.comment-id != 0 }}
+      #  with:
+      #    type: delete
+      #    comment_id: ${{ steps.fc.outputs.comment-id }}
+      #    token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: mshick/add-pr-comment@v2
-        with:
-          message-path: text.md
-          issue: ${{ env.PR_NUMBER }}
-          repo-owner: Kakadu
-          repo-name: comp23hw
-          #refresh-message-position: true
-          proxy-url: https://add-pr-comment-proxy-94idvmwyie-uc.a.run.app
+      - run: opam install yojson curly --yes
 
-      - uses: mshick/add-pr-comment@v2
-        with:
-          message: Hello from docs
-          issue: ${{ env.PR_NUMBER }}
-          repo-owner: Kakadu
-          repo-name: comp23hw
-          proxy-url: https://add-pr-comment-proxy-94idvmwyie-uc.a.run.app
+      - name: Manually remove comment '${{ steps.fc-docs.outputs.comment-id }}' with docs info
+        if: ${{ steps.fc-docs.outputs.comment-id != 0 }}
+        run: |
+          opam exec -- ocaml .github/add_comment.ml \
+            -token ${{ secrets.CLASSIC_TOKEN }} \
+            -issue ${{ env.PR_NUMBER }} \
+            -delete-comment ${{ steps.fc-docs.outputs.comment-id }} \
+            -user Kakadu \
+            -repo comp23hw
+
+      - name: List installed OPAM packages
+        run: opam list
+
+      - run: opam exec -- ocamlopt --version
+
+      - name: manual adding of a comment from text.md
+        run: opam exec -- ocaml .github/add_comment.ml -file text.md -token ${{ secrets.CLASSIC_TOKEN }} -issue ${{ env.PR_NUMBER }}
 
 
   upload_coverage:
     runs-on: ubuntu-latest
-    if: >
-      ${{ github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.conclusion == 'success' }}
+    if: ${{( github.event.workflow_run.event == 'pull_request') && (github.event.workflow_run.conclusion == 'success') }}
     steps:
       - name: Download coverage artifact
         uses: dawidd6/action-download-artifact@v2
@@ -267,6 +264,14 @@ jobs:
           workflow: PR.yml
           name: coverage
           path: _coverage
+
+      - run: |
+          echo "LANG_NAME=$(cat _coverage/projectname.txt)" >> $GITHUB_ENV
+
+      - run: echo "${{ env.LANG_NAME }}"
+
+      - run: exit 1
+        if: ${{ env.LANG_NAME == '' }}
 
       - name: Deploy coverage
         uses: peaceiris/actions-gh-pages@v3
