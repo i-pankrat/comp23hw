@@ -59,8 +59,8 @@ let%expect_test _ =
      let x y =
      let #binop1 = 6 + 9 in
      let #binop2 = 4 + y in
-     let #binop3 = #binop1 * #binop2
-     let #binop4  = #binop3  / y
+     let #binop3 = #binop1 * #binop2 in
+     let #binop4  = #binop3  / y in
      in #binop4
   *)
   let _ =
@@ -115,7 +115,7 @@ let%expect_test _ =
      Output:
      let test f x =
      let #app1 = f x in
-     let #app2 = #app1 1
+     let #app2 = #app1 1 in
      in #app2
   *)
   let _ =
@@ -247,8 +247,8 @@ let%expect_test _ =
      let #binop2 = n - 1 in
      let #app3 = fact #binop2 in
      let #binop4 = acc * n in
-     let #app5 = #app3 #binop4
-     in #app5
+     let #app5 = #app3 #binop4 in
+     #app5
 
      let fac_tailrec n =
      let #app1 = fact n in
