@@ -75,8 +75,7 @@ let anf_binding = function
     let constructor = binding_to_anf_expr binding in
     let args =
       List.map
-        (fun arg ->
-          match arg with
+        (function
           | Arg (name, _) -> name)
         args
     in
