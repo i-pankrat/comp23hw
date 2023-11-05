@@ -8,7 +8,12 @@
   Typedtree
   Inferencer
   Pprinttypetree
-  Pprinttypedtree)
+  Pprinttypedtree
+  Lambdalift
+  Alpha
+  Closure
+  Counter
+  Toplevel)
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))
