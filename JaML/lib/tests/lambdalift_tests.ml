@@ -10,6 +10,77 @@ let print_llstatements program = Format.printf "%s" (show_llstatements program)
 
 let%expect_test _ =
   (* Input:
+     let test x =
+     let id1 y = y in
+     let id2 z = id1 z in
+     let id3 w = id2 w in
+     let id4 u = id3 u in
+     id4 x
+
+     Output:
+     let id1 y = y
+     let id2 z = id1 z
+     let id3 w = id2 w
+     let id4 u = id3 u
+     let test x = id4 x
+  *)
+  let _ =
+    let e =
+      [ TLet
+          ( "test"
+          , TFun
+              ( Arg ("x", Tyvar 12)
+              , TLetIn
+                  ( "id1"
+                  , TFun
+                      (Arg ("y", Tyvar 1), TVar ("y", Tyvar 1), Arrow (Tyvar 1, Tyvar 1))
+                  , TLetIn
+                      ( "id2"
+                      , TFun
+                          ( Arg ("z", Tyvar 4)
+                          , TApp
+                              ( TVar ("id1", Arrow (Tyvar 4, Tyvar 4))
+                              , TVar ("z", Tyvar 4)
+                              , Arrow (Tyvar 4, Tyvar 4) )
+                          , Arrow (Tyvar 4, Tyvar 4) )
+                      , TLetIn
+                          ( "id3"
+                          , TFun
+                              ( Arg ("w", Tyvar 7)
+                              , TApp
+                                  ( TVar ("id2", Arrow (Tyvar 7, Tyvar 7))
+                                  , TVar ("w", Tyvar 7)
+                                  , Arrow (Tyvar 7, Tyvar 7) )
+                              , Arrow (Tyvar 7, Tyvar 7) )
+                          , TLetIn
+                              ( "id4"
+                              , TFun
+                                  ( Arg ("u", Tyvar 10)
+                                  , TApp
+                                      ( TVar ("id3", Arrow (Tyvar 10, Tyvar 10))
+                                      , TVar ("u", Tyvar 10)
+                                      , Arrow (Tyvar 10, Tyvar 10) )
+                                  , Arrow (Tyvar 10, Tyvar 10) )
+                              , TApp
+                                  ( TVar ("id4", Arrow (Tyvar 12, Tyvar 12))
+                                  , TVar ("x", Tyvar 12)
+                                  , Arrow (Tyvar 12, Tyvar 12) )
+                              , Arrow (Tyvar 10, Tyvar 10) )
+                          , Arrow (Tyvar 7, Tyvar 7) )
+                      , Arrow (Tyvar 4, Tyvar 4) )
+                  , Arrow (Tyvar 1, Tyvar 1) )
+              , Arrow (Tyvar 12, Tyvar 12) )
+          , Arrow (Tyvar 12, Tyvar 12) )
+      ]
+    in
+    lambda_lift e |> print_llstatements
+  in
+  [%expect {|
+ |}]
+;;
+
+let%expect_test _ =
+  (* Input:
      let sum x =
      let new_sum x = x + 1 in
      new_sum x
