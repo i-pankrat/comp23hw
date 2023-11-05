@@ -1,0 +1,32 @@
+(lang dune 3.10)
+
+(name ZRusML)
+
+(generate_opam_files true)
+
+(cram enable)
+
+(license LGPL-2.1)
+
+(authors "Shangareev Rustam" , "Danil Yevdokimov")
+
+(maintainers "Shangareev Rustam" , "Danil Yevdokimov")
+
+(package
+ (name ZRusML)
+ (synopsis "ZRusML")
+ (description "Compiler for MiniML")
+ (depends
+  ocaml
+  dune
+  core
+  angstrom
+  (ppx_inline_test :with-test)
+  qcheck-core
+  ppx_expect
+  ppx_deriving
+  (odoc :with-doc)
+  (ocamlformat :build)
+  base)
+ (tags
+  (MiniML Compiler ML)))

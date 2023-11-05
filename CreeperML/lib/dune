@@ -1,0 +1,25 @@
+(ocamllex lexer)
+
+(menhir
+ (flags --table)
+ (modules parser)
+ (infer false))
+
+(rule
+ (deps parse_errors.messages parser.mly)
+ (targets parser_messages.ml)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run menhir --compile-errors %{deps}))))
+
+(library
+ (name CreeperML)
+ (public_name CreeperML)
+ (libraries menhirLib)
+ (flags :standard -color always -safe-string -warn-error -a+8 -w -50)
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_compare))
+ (inline_tests)
+ (instrumentation
+  (backend bisect_ppx)))

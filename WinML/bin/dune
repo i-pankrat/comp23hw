@@ -1,0 +1,4 @@
+(executable
+ (public_name winml)
+ (name main)
+ (libraries winml))

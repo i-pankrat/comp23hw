@@ -1,0 +1,10 @@
+(library
+ (name scaml_lib)
+ (public_name SCAML.Lib)
+ (modules Ast Parser Ty Inferencer)
+ (libraries base angstrom)
+ (instrumentation
+  (backend bisect_ppx))
+ (preprocess
+  (pps ppx_expect ppx_deriving.show ppx_deriving.eq))
+ (inline_tests))

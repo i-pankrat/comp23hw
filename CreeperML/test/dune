@@ -1,0 +1,18 @@
+(executable
+ (name test_infer)
+ (modules test_infer)
+ (public_name test_infer)
+ (libraries CreeperML stdio)
+ (instrumentation
+  (backend bisect_ppx)))
+
+(executable
+ (name test_parser)
+ (modules test_parser)
+ (public_name test_parser)
+ (libraries CreeperML stdio)
+ (instrumentation
+  (backend bisect_ppx)))
+
+(cram
+ (deps ./test_infer.exe ./test_parser.exe))
