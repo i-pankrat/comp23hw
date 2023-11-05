@@ -2,8 +2,5 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-(** Counter *)
-module Counter : sig
-  val genid : string -> string
-  val reset : int -> unit
-end
+(** Performs conversion to anf *)
+val anf : Toplevel.llstatements -> Anf.anfstatements
