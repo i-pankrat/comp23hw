@@ -40,5 +40,5 @@ type anfexpr =
   (** let rec name [arg1, arg2, ... arg3] = aexpr *)
 [@@deriving show { with_path = false }]
 
-(**Statements type (list of top level declarations) *)
+(** Statements type (list of top level declarations) *)
 type anfstatements = anfexpr list [@@deriving show { with_path = false }]
