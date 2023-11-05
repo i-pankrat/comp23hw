@@ -2,7 +2,7 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-open Typetree
+open Ty
 open Base
 
 (** Convert number to letter *)

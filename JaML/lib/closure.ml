@@ -4,11 +4,11 @@
 
 open Base
 open Typedtree
-open Typetree
+open Ty
 open Counter.Counter
 
 module TS = struct
-  type t = string * Typetree.ty
+  type t = string * Ty.ty
 
   let compare ((n1, _) : t) ((n2, _) : t) = Base.Poly.compare n1 n2
 end

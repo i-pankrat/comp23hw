@@ -4,10 +4,10 @@
  (modules
   Ast
   Parser
-  Typetree
+  Ty
   Typedtree
   Inferencer
-  Pprinttypetree
+  Pprintty
   Pprinttypedtree
   Lambdalift
   Alpha
