@@ -61,7 +61,7 @@ let%expect_test _ =
      let #binop2 = 4 + y in
      let #binop3 = #binop1 * #binop2 in
      let #binop4  = #binop3  / y in
-     in #binop4
+     #binop4
   *)
   let _ =
     let e =
@@ -116,7 +116,7 @@ let%expect_test _ =
      let test f x =
      let #app1 = f x in
      let #app2 = #app1 1 in
-     in #app2
+     #app2
   *)
   let _ =
     let e =
