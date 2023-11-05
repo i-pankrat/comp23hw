@@ -132,7 +132,7 @@ let%expect_test _ =
         (TFun: (int -> int) (
             (y: int),
             (TLetIn(
-                closure_fun1: (int -> int),
+                #closure_fun1: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
                     (x: int)
@@ -157,7 +157,7 @@ let%expect_test _ =
                             (z: ((int -> int) -> int)),
                             (y: int)
                         )),
-                        (closure_fun1: (int -> int))
+                        (#closure_fun1: (int -> int))
                     ))
                 ))
             ))
@@ -292,13 +292,13 @@ let%expect_test _ =
         (TFun: (int -> int) (
             (n: int),
             (TLetIn(
-                closure_fun3: (int -> int),
+                #closure_fun2: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
                     (x: int)
                 )),
                 (TLetIn(
-                    closure_fun2: ((int -> int) -> (int -> (int -> int))),
+                    #closure_fun1: ((int -> int) -> (int -> (int -> int))),
                     (TFun: ((int -> int) -> (int -> (int -> int))) (
                         (k: (int -> int)),
                         (TFun: (int -> (int -> int)) (
@@ -340,7 +340,7 @@ let%expect_test _ =
                                         )),
                                         (TApp: (int -> int) (
                                             (TApp: ((int -> int) -> (int -> (int -> int))) (
-                                                (closure_fun2: ((int -> int) -> (int -> (int -> int)))),
+                                                (#closure_fun1: ((int -> int) -> (int -> (int -> int)))),
                                                 (k: (int -> int))
                                             )),
                                             (n: int)
@@ -354,7 +354,7 @@ let%expect_test _ =
                                 (fack: (int -> ((int -> int) -> int))),
                                 (n: int)
                             )),
-                            (closure_fun3: (int -> int))
+                            (#closure_fun2: (int -> int))
                         ))
                     ))
                 ))
