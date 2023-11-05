@@ -4,10 +4,11 @@
 
 open Base
 open Typedtree
-open Typetree
+open Ty
+open Counter.Counter
 
 module TS = struct
-  type t = string * Typetree.ty
+  type t = string * Ty.ty
 
   let compare ((n1, _) : t) ((n2, _) : t) = Base.Poly.compare n1 n2
 end
@@ -100,8 +101,7 @@ and closure_expr env known expr =
     let fv_known = free_variables expr in
     let diff = NameS.diff fv_known known |> NameS.elements in
     let e1, ty = put_diff_arg diff (expr, ty2) in
-    let open Counter in
-    let new_id = Counter.genid "closure_fun" in
+    let new_id = genid "#closure_fun" in
     let env =
       let constr_new_let e2 = TLetIn (new_id, e1, e2, ty) in
       extend_env new_id (diff, ty, Some constr_new_let) env

@@ -88,9 +88,9 @@ let%expect_test _ =
 
      Output:
      let x y =
-     let closure_fun1 x = x in
+     let #closure_fun1 x = x in
      let z y a = a (y + 1) in
-     z y closure_fun1
+     z y #closure_fun1
   *)
   let _ =
     let e =
@@ -132,7 +132,7 @@ let%expect_test _ =
         (TFun: (int -> int) (
             (y: int),
             (TLetIn(
-                closure_fun1: (int -> int),
+                #closure_fun1: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
                     (x: int)
@@ -157,7 +157,7 @@ let%expect_test _ =
                             (z: ((int -> int) -> int)),
                             (y: int)
                         )),
-                        (closure_fun1: (int -> int))
+                        (#closure_fun1: (int -> int))
                     ))
                 ))
             ))
@@ -177,13 +177,13 @@ let%expect_test _ =
 
      Output:
      let fac n =
-     let closure_fun3 x = x in
-     let closure_fun2 k n m = k (m * n)
+     let #closure_fun3 x = x in
+     let #closure_fun2 k n m = k (m * n)
      let rec fack n k =
      if n<=1 then k 1
-     else fack (n−1) (closure_fun2 k n)
+     else fack (n−1) (#closure_fun2 k n)
      in
-     fack n closure_fun3
+     fack n #closure_fun3
   *)
   let _ =
     let e =
@@ -292,13 +292,13 @@ let%expect_test _ =
         (TFun: (int -> int) (
             (n: int),
             (TLetIn(
-                closure_fun3: (int -> int),
+                #closure_fun3: (int -> int),
                 (TFun: (int -> int) (
                     (x: int),
                     (x: int)
                 )),
                 (TLetIn(
-                    closure_fun2: ((int -> int) -> (int -> (int -> int))),
+                    #closure_fun2: ((int -> int) -> (int -> (int -> int))),
                     (TFun: ((int -> int) -> (int -> (int -> int))) (
                         (k: (int -> int)),
                         (TFun: (int -> (int -> int)) (
@@ -340,7 +340,7 @@ let%expect_test _ =
                                         )),
                                         (TApp: (int -> int) (
                                             (TApp: ((int -> int) -> (int -> (int -> int))) (
-                                                (closure_fun2: ((int -> int) -> (int -> (int -> int)))),
+                                                (#closure_fun2: ((int -> int) -> (int -> (int -> int)))),
                                                 (k: (int -> int))
                                             )),
                                             (n: int)
@@ -354,7 +354,7 @@ let%expect_test _ =
                                 (fack: (int -> ((int -> int) -> int))),
                                 (n: int)
                             )),
-                            (closure_fun3: (int -> int))
+                            (#closure_fun3: (int -> int))
                         ))
                     ))
                 ))

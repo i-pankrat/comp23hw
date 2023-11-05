@@ -4,16 +4,18 @@
  (modules
   Ast
   Parser
-  Typetree
+  Ty
   Typedtree
   Inferencer
-  Pprinttypetree
+  Pprintty
   Pprinttypedtree
   Lambdalift
   Alpha
   Closure
   Counter
-  Toplevel)
+  Toplevel
+  Anf
+  Anfconv)
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))
