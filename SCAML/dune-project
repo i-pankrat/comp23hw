@@ -1,0 +1,33 @@
+(lang dune 2.8)
+
+(generate_opam_files true)
+
+(cram enable)
+
+(license LGPL-2.1-or-later)
+
+(authors "Grigory Aseev" , "Matvey Kalashnikov")
+
+(maintainers "https://github.com/grrrance" , "https://github.com/foreverjun")
+
+(bug_reports "https://github.com/grrrance/SCAML/issues")
+
+(homepage "https://github.com/grrrance/SCAML")
+
+(package
+ (name SCAML)
+ (synopsis "Compiler for MiniML language")
+ (description "$ Smart Compiler and Analyzer for Mini-Language $")
+ (version 0.1)
+ (depends
+  ocaml
+  dune
+  angstrom
+  (ppx_inline_test :with-test)
+  qcheck-core
+  ppx_expect
+  ppx_deriving
+  (odoc :with-doc)
+  (ocamlformat :build)
+  base
+  bisect_ppx))

@@ -1,0 +1,34 @@
+(lang dune 3.10)
+
+(name CreeperML)
+
+(generate_opam_files true)
+
+(source
+ (github Tozarin/CreeperML))
+
+(authors "Startsev Matvey and Alekseev Aurthur")
+
+(maintainers "https://github.com/Tozarin")
+
+(license LICENSE)
+
+(documentation https://github.com/Tozarin/CreeperML)
+
+(using menhir 2.0)
+
+(package
+ (name CreeperML)
+ (synopsis "Compiler for MiniML language")
+ (description "Student project compiler for self MiniML language")
+ (depends
+  ocaml
+  dune
+  ppx_expect
+  ppx_deriving
+  (ppx_inline_test :with-test)
+  bisect_ppx)
+ (tags
+  ("MiniML" "Compiler" "CreeperML" "OCaml")))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

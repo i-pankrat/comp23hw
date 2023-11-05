@@ -1,0 +1,10 @@
+(executable
+ (name demoInfer)
+ (public_name demoInfer)
+ (modules DemoInfer)
+ (instrumentation
+  (backend bisect_ppx))
+ (libraries KREML_lib stdio))
+
+(cram
+ (deps ./demoInfer.exe))

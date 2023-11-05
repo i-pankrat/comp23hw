@@ -1,0 +1,8 @@
+(executable
+ (name inferencer_test)
+ (modules inferencer_test)
+ (public_name ZRusML.test)
+ (libraries ZRusML.lib stdio))
+
+(cram
+ (deps ./inferencer_test.exe))

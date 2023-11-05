@@ -5,20 +5,29 @@ test_proj                   @Kakadu
 # #          ФИ1, ФИ 2
 # # dir_name   @nick1 @nick2
 
-#    	    Дудников Печенев
-PeDuCoML    @airh4ck @Danila-Pechenev
+#    	    Дудников      Печенев
+PeDuCoML    @airh4ck      @Danila-Pechenev
 
-#           Старцев Алексеев
-CreeperML   @tozarin @arthur100500
+#           Старцев       Алексеев
+CreeperML   @tozarin      @arthur100500
 
-#           Панкратов Друмов
-JaML        @i-pankrat @DrumovMax
+#           Панкратов     Друмов
+JaML        @i-pankrat    @DrumovMax
 
-#           Асеев Калашников
-SCAML       @grrrance @foreverjun
+#           Асеев         Калашников
+SCAML       @grrrance     @foreverjun
 
-#           Краев        Бадреева
-KREML       @Anton-Kraev @BadreevaPolina
+#           Краев         Бадреева
+KREML       @Anton-Kraev  @BadreevaPolina
 
-#           Кузьмина        Голофастов
-MimiML      @sayumikko      @l-golofastov
+#           Кузьмина       Голофастов
+MimiML      @sayumikko     @l-golofastov
+
+#          Евдокимов       Шангареев
+ZRusML     @st084331       @letit6E
+
+#           Бучин           Гагин
+WinML       @ch3zych3z      @lastdesire
+
+#           Выродов
+NeinML      @VyrodovMikhail
