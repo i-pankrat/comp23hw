@@ -4,6 +4,7 @@
 
 module Counter = struct
   let count = ref 0
+  let reset n = count := n
 
   let genid x =
     incr count;
