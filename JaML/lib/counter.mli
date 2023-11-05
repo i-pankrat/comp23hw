@@ -5,4 +5,5 @@
 (** Counter *)
 module Counter : sig
   val genid : string -> string
+  val reset : int -> unit
 end
