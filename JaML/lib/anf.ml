@@ -6,6 +6,7 @@ type immexpr =
   | ImmNum of int
   | ImmBool of bool
   | ImmId of string
+[@@deriving show { with_path = false }]
 
 type cexpr =
   | CPlus of immexpr * immexpr
@@ -23,13 +24,18 @@ type cexpr =
   | CLte of immexpr * immexpr
   | CApp of immexpr * immexpr
   | CImmExpr of immexpr
+[@@deriving show { with_path = false }]
 
 type aexpr =
   | ALet of string * cexpr * aexpr
   | ALetRec of string * cexpr * aexpr
-  | AIfThenElse of cexpr * aexpr * aexpr
+  | AIfThenElse of aexpr * aexpr * aexpr
   | ACEexpr of cexpr
+[@@deriving show { with_path = false }]
 
 type anfexpr =
-  | AnfLet of string * aexpr
-  | AnfLetRec of string * aexpr
+  | AnfLet of string * string list * aexpr
+  | AnfLetRec of string * string list * aexpr
+[@@deriving show { with_path = false }]
+
+type anfstatements = anfexpr list [@@deriving show { with_path = false }]
