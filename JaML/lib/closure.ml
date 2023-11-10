@@ -51,7 +51,7 @@ let rec free_variables texpr =
     let fv_e1 = free_variables e1 in
     let fv_e2 = free_variables e2 in
     union fv_e1 fv_e2
-  | TConst _ | TLetIn (_, _, _, _) | TLetRecIn (_, _, _, _) -> NameS.empty
+  | TConst _ | TLetIn _ | TLetRecIn _ -> NameS.empty
 ;;
 
 (* The function is designed to create a closure when declaring a function.
