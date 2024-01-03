@@ -461,7 +461,7 @@ let infer_type infer_fun s = Result.map ~f:Stdlib.Fun.id (run (infer_fun s))
 let infer_expr = infer_type infer_expr
 let infer_statements = infer_type infer_statements
 
-let infer (stms : Ast.statements) (check_mode : occurs_check_mode)
+let infer (check_mode : occurs_check_mode) (stms : Ast.statements)
   : (Typedtree.tbinding list, error) result
   =
   mode := check_mode;
