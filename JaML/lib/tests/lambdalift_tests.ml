@@ -36,10 +36,10 @@ let%expect_test _ =
   [%expect
     {|
     let id1 y = y;
-    let id2 z = id1 z;
-    let id3 w = id2 w;
-    let id4 u = id3 u;
-    let test x = id4 x
+    let id2 id1 z = id1 z;
+    let id3 id2 w = id2 id1 w;
+    let id4 id3 u = id3 id2 u;
+    let test x = id4 id3 x
  |}]
 ;;
 

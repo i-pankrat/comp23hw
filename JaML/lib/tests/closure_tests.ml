@@ -81,80 +81,11 @@ let%expect_test _ =
   in
   [%expect
     {|
-    (TLet(
-        fac: (int -> int),
-        (TFun: (int -> int) (
-            (n: int),
-            (TLetIn(
-                #closure_fun2: ((int -> int) -> (int -> (int -> int))),
-                (TFun: ((int -> int) -> (int -> (int -> int))) (
-                    (k: (int -> int)),
-                    (TFun: (int -> (int -> int)) (
-                        (n: int),
-                        (TFun: (int -> int) (
-                            (m: int),
-                            (TApp: (int -> int) (
-                                (k: (int -> int)),
-                                (Mul: (int -> (int -> int)) (
-                                    (m: int),
-                                    (n: int)
-                                ))
-                            ))
-                        ))
-                    ))
-                )),
-                (TLetIn(
-                    #closure_fun3: (int -> int),
-                    (TFun: (int -> int) (
-                        (x: int),
-                        (x: int)
-                    )),
-                    (TLetRecIn(
-                        fack: (int -> ((int -> int) -> int)),
-                        (TFun: (int -> ((int -> int) -> int)) (
-                            (n: int),
-                            (TFun: ((int -> int) -> int) (
-                                (k: (int -> int)),
-                                (TIfThenElse: int
-                                    ((Lte: (int -> (int -> bool)) (
-                                        (n: int),
-                                        (TConst((CInt 1): int))
-                                    )),
-                                    (TApp: (int -> int) (
-                                        (k: (int -> int)),
-                                        (TConst((CInt 1): int))
-                                    )),
-                                    (TApp: int (
-                                        (TApp: (int -> ((int -> int) -> int)) (
-                                            (fack: (int -> ((int -> int) -> int))),
-                                            (Sub: (int -> (int -> int)) (
-                                                (n: int),
-                                                (TConst((CInt 1): int))
-                                            ))
-                                        )),
-                                        (TApp: (int -> int) (
-                                            (TApp: ((int -> int) -> (int -> (int -> int))) (
-                                                (#closure_fun2: ((int -> int) -> (int -> (int -> int)))),
-                                                (k: (int -> int))
-                                            )),
-                                            (n: int)
-                                        ))
-                                    ))
-                                ))
-                            ))
-                        )),
-                        (TApp: int (
-                            (TApp: (int -> ((int -> int) -> int)) (
-                                (fack: (int -> ((int -> int) -> int))),
-                                (n: int)
-                            )),
-                            (#closure_fun3: (int -> int))
-                        ))
-                    ))
-                ))
-            ))
-        ))
-    ))
+    let fac = fun n ->
+        let #closure_fun2 = fun k -> fun n -> fun m -> k (m * n) in
+        let #closure_fun3 = fun x -> x in
+        let rec fack = fun n -> fun k ->
+        if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in fack n #closure_fun3
  |}]
 ;;
 
