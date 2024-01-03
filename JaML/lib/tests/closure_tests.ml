@@ -64,8 +64,8 @@ let%expect_test _ =
   [%expect
     {|
     let fac = fun n ->
-        let #closure_fun3 = fun x -> x in
         let #closure_fun2 = fun k -> fun n -> fun m -> k (m * n) in
+        let #closure_fun3 = fun x -> x in
         let rec fack = fun n -> fun k ->
         if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in fack n #closure_fun3
  |}]
