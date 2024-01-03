@@ -49,7 +49,7 @@ let infer_types input mode =
   let parsed = Parser.parse input in
   match parsed with
   | Ok statements ->
-    (match Inferencer.infer statements mode with
+    (match Inferencer.infer mode statements with
      | Ok typed_statements -> printf "%a\n" pp_statements typed_statements
      | Error err -> printf "%a\n" Inferencer.pp_error err)
   | Error err -> printf "%a\n" Parser.pp_error err
