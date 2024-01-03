@@ -16,7 +16,6 @@ type ty =
   | Tyvar of int (** Represent polymorphic type *)
   | Prim of prim (** Ground types *)
   | Arrow of ty * ty (** Type for function *)
-[@@deriving show { with_path = false }]
 
 val tyint : ty
 val tybool : ty
