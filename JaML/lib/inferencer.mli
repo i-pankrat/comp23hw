@@ -24,4 +24,4 @@ val infer_expr : Ast.expr -> (Ty.ty * Typedtree.texpr, error) result
 val infer_statements : Ast.statements -> (Typedtree.tbinding list, error) result
 
 (** Infer type of statements with occurs check mode *)
-val infer : Ast.statements -> occurs_check_mode -> (Typedtree.tbinding list, error) result
+val infer : occurs_check_mode -> Ast.statements -> (Typedtree.tbinding list, error) result
