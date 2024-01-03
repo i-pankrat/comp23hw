@@ -134,7 +134,7 @@ and closure_expr env known expr =
       |> NameS.elements
     in
     let e1, ty = put_diff_arg diff (e1, ty) in
-    let env = if List.length diff > 0 then extend_env id (diff, ty, None) env else env in
+    let env = if List.is_empty diff then env else extend_env id (diff, ty, None) env in
     let e2, known, env = closure_expr env known' e2 in
     let expr, env = create_closure_let (TLetRecIn (id, e1, e2, ty), env) env in
     expr, known, env
@@ -146,7 +146,7 @@ and closure_expr env known expr =
       |> NameS.elements
     in
     let e1, ty = put_diff_arg diff (e1, ty) in
-    let env = if List.length diff > 0 then extend_env id (diff, ty, None) env else env in
+    let env = if List.is_empty diff then env else extend_env id (diff, ty, None) env in
     let e2, known, env = closure_expr env known' e2 in
     let expr, env = create_closure_let (TLetIn (id, e1, e2, ty), env) env in
     expr, known, env
