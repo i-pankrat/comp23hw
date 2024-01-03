@@ -10,7 +10,6 @@ open Ast
     There are no TFuns, so anonymous functions are not expressible. *)
 
 type arg = Arg of string * ty (** Typed function argument *)
-[@@deriving show { with_path = false }]
 
 (** Typed expession type *)
 type llexpr =
@@ -25,14 +24,12 @@ type llexpr =
   | LLetIn of string * llexpr * llexpr * ty (** Typed expression for let in declaration *)
   | LLetRecIn of string * llexpr * llexpr * ty
   (** Typed expression for let rec in declaration *)
-[@@deriving show { with_path = false }]
 
 (** Typed binding type *)
 type llbinding =
   | LLet of string * arg list * llexpr * ty (** Typed expression for let declaration *)
   | LLetRec of string * arg list * llexpr * ty
   (** Typed expression for let rec declaration *)
-[@@deriving show { with_path = false }]
 
 (** Typed statements type *)
-type llstatements = llbinding list [@@deriving show { with_path = false }]
+type llstatements = llbinding list

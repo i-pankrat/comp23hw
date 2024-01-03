@@ -6,7 +6,6 @@ type immexpr =
   | ImmNum of int (** ..., -1, 0, 1, ... *)
   | ImmBool of bool (** true, false *)
   | ImmId of string (** identifiers or variables *)
-[@@deriving show { with_path = false }]
 
 type cexpr =
   | CPlus of immexpr * immexpr (** a + b *)
@@ -24,21 +23,18 @@ type cexpr =
   | CLte of immexpr * immexpr (** a <= b *)
   | CApp of immexpr * immexpr (** function arg *)
   | CImmExpr of immexpr (** immexpr *)
-[@@deriving show { with_path = false }]
 
 type aexpr =
   | ALet of string * cexpr * aexpr (** let name = cexpr in aexpr *)
   | ALetRec of string * cexpr * aexpr (** let rec name = cexpr in aexpr *)
   | AIfThenElse of aexpr * aexpr * aexpr (** if aexpr1 then aexpr2 else aexpe3 *)
   | ACEexpr of cexpr (** cexpr *)
-[@@deriving show { with_path = false }]
 
 (** Anf binding type (top level declarations) *)
 type anfexpr =
   | AnfLet of string * string list * aexpr (** let name [arg1, arg2, ... arg3] = aexpr *)
   | AnfLetRec of string * string list * aexpr
   (** let rec name [arg1, arg2, ... arg3] = aexpr *)
-[@@deriving show { with_path = false }]
 
 (** Statements type (list of top level declarations) *)
-type anfstatements = anfexpr list [@@deriving show { with_path = false }]
+type anfstatements = anfexpr list

@@ -9,6 +9,8 @@
   Inferencer
   Pprintty
   Pprinttypedtree
+  Pprinttopleveltree
+  Pprintanf
   Lambdalift
   Alpha
   Closure
