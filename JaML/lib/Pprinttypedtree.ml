@@ -29,6 +29,12 @@ let get_texpr_subst =
       let subs, index = helper subs index e2 in
       helper subs index e3
     | TConst _ -> subs, index
+    | TTuple (elems, typ) ->
+      let subs, index = Pprintty.get_ty_subs subs index typ in
+      List.fold
+        ~init:(subs, index)
+        ~f:(fun (subs, index) elem -> helper subs index elem)
+        elems
   in
   helper (Base.Map.empty (module Base.Int)) 0
 ;;

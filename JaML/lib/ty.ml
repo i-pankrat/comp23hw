@@ -20,6 +20,7 @@ type ty =
   | Tyvar of int (** Represent polymorphic type *)
   | Prim of prim (** Ground types *)
   | Arrow of ty * ty (** Type for function *)
+  | Tuple of ty list (** Type for tuples *)
 [@@deriving show { with_path = false }]
 
 (* Constructors for ground types *)
@@ -29,3 +30,4 @@ let tybool = Prim Bool
 (* Constructors *)
 let arrow l r = Arrow (l, r)
 let var_typ x = Tyvar x
+let tuple t = Tuple t

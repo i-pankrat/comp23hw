@@ -19,6 +19,7 @@ let rec transform_binder binder =
 ;;
 
 let add map k v = if Map.mem map k then map else Map.add_exn map ~key:k ~data:v
+let empty_map = Base.Map.empty (module Base.Int)
 
 let get_ty_subs =
   let rec helper subs index = function
@@ -27,6 +28,8 @@ let get_ty_subs =
     | Arrow (l, r) ->
       let subs, index = helper subs index l in
       helper subs index r
+    | Tuple tp ->
+      List.fold ~init:(subs, index) ~f:(fun (subs, index) el -> helper subs index el) tp
   in
   helper
 ;;
@@ -46,11 +49,17 @@ let pp_ty_with_subs subs =
        | None -> fprintf ppf "'_%d" n)
     | Prim s -> pp_print_string ppf @@ show_prim s
     | Arrow (l, r) -> fprintf ppf "(%a -> %a)" helper l helper r
+    | Tuple tl ->
+      pp_print_list
+        ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
+        (fun ppf arg -> helper ppf arg)
+        ppf
+        tl
   in
   helper
 ;;
 
 let pp_ty ppf ty =
-  let subs, _ = get_ty_subs (Base.Map.empty (module Base.Int)) 0 ty in
+  let subs, _ = get_ty_subs empty_map 0 ty in
   pp_ty_with_subs (Some subs) ppf ty
 ;;

@@ -5,7 +5,8 @@
 open Ast
 open Ty
 
-type arg = Arg of string * ty (** Typed function argument *)
+(** Typed patterns *)
+type tpattern = pattern * ty
 
 (** Typed expession type *)
 type texpr =
@@ -17,14 +18,15 @@ type texpr =
   (** Typed expression for the function application to the arguments *)
   | TIfThenElse of texpr * texpr * texpr * ty
   (** Typed expression for condition statement *)
-  | TLetIn of string * texpr * texpr * ty (** Typed expression for let in declaration *)
+  | TLetIn of tpattern * texpr * texpr * ty (** Typed expression for let in declaration *)
   | TLetRecIn of string * texpr * texpr * ty
   (** Typed expression for let rec in declaration *)
-  | TFun of arg * texpr * ty (** Typed expression for function *)
+  | TFun of tpattern * texpr * ty (** Typed expression for function *)
+  | TTuple of texpr list * ty (** Typed expression for the tuples *)
 
 (** Typed binding type *)
 type tbinding =
-  | TLet of string * texpr * ty (** Typed expression for let declaration *)
+  | TLet of tpattern * texpr * ty (** Typed expression for let declaration *)
   | TLetRec of string * texpr * ty (** Typed expression for let rec declaration *)
 
 (** Typed statements type *)
@@ -39,7 +41,8 @@ let tapp f a t = TApp (f, a, t)
 let tifthenelse i t e ty = TIfThenElse (i, t, e, ty)
 let tletin s a b t = TLetIn (s, a, b, t)
 let tletrecin s a b t = TLetRecIn (s, a, b, t)
-let tfun arg_name arg_type a t = TFun (Arg (arg_name, arg_type), a, t)
+let tfun p a t = TFun (p, a, t)
+let ttuple t ty = TTuple (t, ty)
 
 (** tbinding constructors *)
 
