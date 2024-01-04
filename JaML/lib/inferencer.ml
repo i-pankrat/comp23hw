@@ -362,7 +362,7 @@ let infer_expr =
         ( final_subst
         , Subst.apply final_subst t2
         , tifthenelse te1 te2 te3 (Subst.apply final_subst t2) )
-    | ELetIn (name, e1, e2) ->
+    | ELetIn (PVar name, e1, e2) ->
       let* s1, t1_typ, te1 = helper env e1 in
       let env2 = TypeEnv.apply s1 env in
       let t1 = generalize env2 t1_typ in
@@ -380,7 +380,7 @@ let infer_expr =
       let* s2, t2, te2 = helper TypeEnv.(extend (apply s env) (name, t2)) e2 in
       let* final_subst = Subst.compose s s2 in
       return (final_subst, t2, tletrecin name te1 te2 t1)
-    | EFun (arg, e) ->
+    | EFun (PVar arg, e) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (arg, S (VarSet.empty, tv)) in
       let* s1, t1, te1 = helper env e in
@@ -394,7 +394,7 @@ let infer_binding env =
   let open Ast in
   let open Typedtree in
   function
-  | ELet (name, e) ->
+  | ELet (PVar name, e) ->
     let* s, t, te = infer_expr env e in
     return (s, t, tlet name te t)
   | ELetRec (name, e) ->
@@ -446,7 +446,7 @@ let infer_statements (bindings : Ast.statements) : tbinding list t =
       ~init:(return (empty, []))
       ~f:(fun env_binding ->
         function
-        | (ELet (name, _) | ELetRec (name, _)) as new_binding ->
+        | (ELet (PVar name, _) | ELetRec (name, _)) as new_binding ->
           let* env, tbindings = env_binding in
           let* subst, ty, tbinding = infer_binding env new_binding in
           return
