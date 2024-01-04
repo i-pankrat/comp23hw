@@ -115,7 +115,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   interpret_parse show_bindings bindings_p "let x y = y";
-  [%expect {| (ELet ("x", (EFun ("y", (EVar "y"))))) |}]
+  [%expect {| (ELet ((PVar "x"), (EFun ((PVar "y"), (EVar "y"))))) |}]
 ;;
 
 let%expect_test _ =
@@ -135,9 +135,9 @@ let%expect_test _ =
   interpret_parse show_expr expr_p "fun x y z -> x + y - z";
   [%expect
     {|
-    (EFun ("x",
-       (EFun ("y",
-          (EFun ("z",
+    (EFun ((PVar "x"),
+       (EFun ((PVar "y"),
+          (EFun ((PVar "z"),
              (EBinop (Sub, (EBinop (Add, (EVar "x"), (EVar "y"))), (EVar "z")))))
           ))
        )) |}]
@@ -145,33 +145,176 @@ let%expect_test _ =
 
 let%expect_test _ =
   interpret_parse show_bindings bindings_p "let x y = y * y";
-  [%expect {|
-    (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
+  [%expect
+    {|
+    (ELet ((PVar "x"),
+       (EFun ((PVar "y"), (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
 ;;
 
 let%expect_test _ =
   interpret_parse show_bindings bindings_p "let x y = y * y";
-  [%expect {| (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
+  [%expect
+    {|
+    (ELet ((PVar "x"),
+       (EFun ((PVar "y"), (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
 ;;
 
 let%expect_test _ =
   interpret_parse show_bindings bindings_p "let x = fun y -> y * y";
-  [%expect {| (ELet ("x", (EFun ("y", (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
+  [%expect
+    {|
+    (ELet ((PVar "x"),
+       (EFun ((PVar "y"), (EBinop (Mul, (EVar "y"), (EVar "y"))))))) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_pattern patt_p "a,1,c";
+  [%expect {| (PTuple [(PVar "a"); (PConst (CInt 1)); (PVar "c")]) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_pattern patt_p "_,_";
+  [%expect {| (PTuple [PWildcard; PWildcard]) |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_pattern patt_p "((a, (b, c),(d, (e, g),(h, j))),(i, k))";
+  [%expect {|
+    (PTuple
+       [(PTuple
+           [(PVar "a"); (PTuple [(PVar "b"); (PVar "c")]);
+             (PTuple
+                [(PVar "d"); (PTuple [(PVar "e"); (PVar "g")]);
+                  (PTuple [(PVar "h"); (PVar "j")])])
+             ]);
+         (PTuple [(PVar "i"); (PVar "k")])])
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let f (a, b, _, d) = (a, b, d)";
+  [%expect {|
+    [(ELet ((PVar "f"),
+        (EFun ((PTuple [(PVar "a"); (PVar "b"); PWildcard; (PVar "d")]),
+           (ETuple [(EVar "a"); (EVar "b"); (EVar "d")])))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let apply_tuple_to_function func a b c = func (a, b, c)";
+  [%expect {|
+    [(ELet ((PVar "apply_tuple_to_function"),
+        (EFun ((PVar "func"),
+           (EFun ((PVar "a"),
+              (EFun ((PVar "b"),
+                 (EFun ((PVar "c"),
+                    (EApp ((EVar "func"),
+                       (ETuple [(EVar "a"); (EVar "b"); (EVar "c")])))
+                    ))
+                 ))
+              ))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let const _ = 1";
+  [%expect {| [(ELet ((PVar "const"), (EFun (PWildcard, (EConst (CInt 1))))))] |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let strange_tuple ((a, (b, c),(d, (e, g),(h, j))),(i, k)) = ((a, b, c, d), (e, g, \
+     h, j), (i, k))";
+  [%expect {|
+    [(ELet ((PVar "strange_tuple"),
+        (EFun (
+           (PTuple
+              [(PTuple
+                  [(PVar "a"); (PTuple [(PVar "b"); (PVar "c")]);
+                    (PTuple
+                       [(PVar "d"); (PTuple [(PVar "e"); (PVar "g")]);
+                         (PTuple [(PVar "h"); (PVar "j")])])
+                    ]);
+                (PTuple [(PVar "i"); (PVar "k")])]),
+           (ETuple
+              [(ETuple [(EVar "a"); (EVar "b"); (EVar "c"); (EVar "d")]);
+                (ETuple [(EVar "e"); (EVar "g"); (EVar "h"); (EVar "j")]);
+                (ETuple [(EVar "i"); (EVar "k")])])
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let fst_sum (a, _) (c, _) = a + c";
+  [%expect {|
+    [(ELet ((PVar "fst_sum"),
+        (EFun ((PTuple [(PVar "a"); PWildcard]),
+           (EFun ((PTuple [(PVar "c"); PWildcard]),
+              (EBinop (Add, (EVar "a"), (EVar "c")))))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let f (((((((((((a,b))))), ((((((c, d)))))))))))) = a + b + c + d";
+  [%expect {|
+    [(ELet ((PVar "f"),
+        (EFun (
+           (PTuple
+              [(PTuple [(PVar "a"); (PVar "b")]);
+                (PTuple [(PVar "c"); (PVar "d")])]),
+           (EBinop (Add,
+              (EBinop (Add, (EBinop (Add, (EVar "a"), (EVar "b"))), (EVar "c"))),
+              (EVar "d")))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse show_statements statements_p "let f (a, b) = a + b";
+  [%expect {|
+    [(ELet ((PVar "f"),
+        (EFun ((PTuple [(PVar "a"); (PVar "b")]),
+           (EBinop (Add, (EVar "a"), (EVar "b")))))
+        ))
+      ]
+   |}]
 ;;
 
 let%expect_test _ =
   interpret_parse show_bindings bindings_p "let apply f x = f x";
   [%expect
     {|
-      (ELet ("apply", (EFun ("f", (EFun ("x", (EApp ((EVar "f"), (EVar "x"))))))))) |}]
+      (ELet ((PVar "apply"),
+         (EFun ((PVar "f"), (EFun ((PVar "x"), (EApp ((EVar "f"), (EVar "x")))))))
+         )) |}]
 ;;
 
 let%expect_test _ =
   interpret_parse show_bindings bindings_p "let x y = if y > 0 then y else 0";
   [%expect
     {|
-    (ELet ("x",
-       (EFun ("y",
+    (ELet ((PVar "x"),
+       (EFun ((PVar "y"),
           (EIfThenElse ((EBinop (Gt, (EVar "y"), (EConst (CInt 0)))), (EVar "y"),
              (EConst (CInt 0))))
           ))
@@ -186,7 +329,7 @@ let%expect_test _ =
   [%expect
     {|
     [(ELetRec ("fib",
-        (EFun ("n",
+        (EFun ((PVar "n"),
            (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
               (EConst (CInt 1)),
               (EBinop (Add,
@@ -208,8 +351,9 @@ let%expect_test _ =
     "let square = fun x -> x * x  let square5 = square 5";
   [%expect
     {|
-    [(ELet ("square", (EFun ("x", (EBinop (Mul, (EVar "x"), (EVar "x")))))));
-      (ELet ("square5", (EApp ((EVar "square"), (EConst (CInt 5))))))]|}]
+    [(ELet ((PVar "square"),
+        (EFun ((PVar "x"), (EBinop (Mul, (EVar "x"), (EVar "x")))))));
+      (ELet ((PVar "square5"), (EApp ((EVar "square"), (EConst (CInt 5))))))]|}]
 ;;
 
 let%expect_test _ =
@@ -222,11 +366,11 @@ let%expect_test _ =
     \    let fac5 = fac 5";
   [%expect
     {|
-    [(ELet ("fac",
-        (EFun ("n",
+    [(ELet ((PVar "fac"),
+        (EFun ((PVar "n"),
            (ELetRecIn ("fact",
-              (EFun ("n",
-                 (EFun ("acc",
+              (EFun ((PVar "n"),
+                 (EFun ((PVar "acc"),
                     (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 1)))),
                        (EVar "acc"),
                        (EApp (
@@ -239,7 +383,7 @@ let%expect_test _ =
               (EApp ((EApp ((EVar "fact"), (EVar "n"))), (EConst (CInt 1))))))
            ))
         ));
-      (ELet ("fac5", (EApp ((EVar "fac"), (EConst (CInt 5))))))] |}]
+      (ELet ((PVar "fac5"), (EApp ((EVar "fac"), (EConst (CInt 5))))))] |}]
 ;;
 
 let%expect_test _ =
@@ -247,7 +391,9 @@ let%expect_test _ =
   [%expect
     {|
     [(ELetRec ("fix",
-        (EFun ("f", (EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f")))))))))
+        (EFun ((PVar "f"), (EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f")))))
+           ))
+        ))
       ]
    |}]
 ;;
@@ -257,8 +403,8 @@ let%expect_test _ =
   [%expect
     {|
     [(ELetRec ("fix",
-        (EFun ("f",
-           (EFun ("eta",
+        (EFun ((PVar "f"),
+           (EFun ((PVar "eta"),
               (EApp ((EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f"))))),
                  (EVar "eta")))
               ))
@@ -275,11 +421,13 @@ let%expect_test _ =
     "let fix f = (fun x -> f (x x)) (fun y -> f (y y))";
   [%expect
     {|
-    [(ELet ("fix",
-        (EFun ("f",
+    [(ELet ((PVar "fix"),
+        (EFun ((PVar "f"),
            (EApp (
-              (EFun ("x", (EApp ((EVar "f"), (EApp ((EVar "x"), (EVar "x"))))))),
-              (EFun ("y", (EApp ((EVar "f"), (EApp ((EVar "y"), (EVar "y")))))))
+              (EFun ((PVar "x"),
+                 (EApp ((EVar "f"), (EApp ((EVar "x"), (EVar "x"))))))),
+              (EFun ((PVar "y"),
+                 (EApp ((EVar "f"), (EApp ((EVar "y"), (EVar "y")))))))
               ))
            ))
         ))

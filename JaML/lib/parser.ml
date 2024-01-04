@@ -37,9 +37,11 @@ let wspace_l p = empty *> p
 let wspaces_char ch = wspace_l @@ char ch
 let wspaces_str str = wspaces_p @@ string_ci str
 let parens p = wspaces_char '(' *> p <* wspaces_char ')'
-let parens_or_not p = p <|> parens p
+let parens_or_not_desc p = p <|> parens p
+let parens_or_not_asc p = parens p <|> p
 let cint i = CInt i
 let cbool b = CBool b
+let wc_p = empty *> wspaces_char '_'
 
 let var_p =
   empty *> take_while1 (fun ch -> is_letter ch || is_digit ch || Char.equal ch '_')
@@ -48,6 +50,8 @@ let var_p =
   then fail "Variables cannot be keyword"
   else if is_digit @@ String.get v 0
   then fail "The first character must be a letter"
+  else if String.get v 0 = '_' && String.length v = 1
+  then fail "The variable cannot be named wildcard"
   else return v
 ;;
 
@@ -68,14 +72,55 @@ let cbool_p =
   *> lift (fun b -> cbool @@ bool_of_string b) (wspaces_str "false" <|> wspaces_str "true")
 ;;
 
+let const_p = cint_p <|> cbool_p
+
 let chainl1 e op =
   let rec go acc = lift2 (fun f x -> f acc x) op e >>= go <|> return acc in
   e >>= fun init -> go init
 ;;
 
+type pdispatch =
+  { value : pdispatch -> pattern t
+  ; ptuple : pdispatch -> pattern t
+  ; pattern : pdispatch -> pattern t (** Parser for patterns in arguments *)
+  ; pattern_name : pdispatch -> pattern t
+  (** Parser for patterns when declaring a function or variables *)
+  }
+
+let pvar_p = (fun v -> PVar v) <$> var_p
+let pconst_p = (fun c -> PConst c) <$> const_p
+let pwc_p = (fun _ -> PWildcard) <$> wc_p
+
+let tuple_p p =
+  empty
+  *> lift2
+       (fun a b -> a :: b)
+       (wspaces_p p <* wspaces_char ',')
+       (sep_by1 (wspaces_char ',') p)
+;;
+
+let ptuple_p p = (fun t -> PTuple t) <$> parens_or_not_asc @@ tuple_p p
+
+let pack =
+  let pattern pack = pack.ptuple pack <|> pack.value pack in
+  let pattern_name pack = pack.ptuple pack <|> pwc_p <|> pvar_p in
+  let value _ = parens_or_not_desc @@ (pwc_p <|> pvar_p <|> pconst_p) in
+  let ptuple pack =
+    fix
+    @@ fun _ ->
+    ptuple_p (parens @@ pack.ptuple pack <|> pack.value pack)
+    <|> parens @@ pack.ptuple pack
+  in
+  { value; ptuple; pattern; pattern_name }
+;;
+
+let patt_p = pack.pattern pack
+let patt_name_p = pack.pattern_name pack
+
 type edispatch =
   { evar : edispatch -> expr t
   ; econst : edispatch -> expr t
+  ; etuple : edispatch -> expr t
   ; econdition : edispatch -> expr t
   ; eletin : edispatch -> expr t
   ; eletrecin : edispatch -> expr t
@@ -85,9 +130,9 @@ type edispatch =
   ; expr : edispatch -> expr t
   }
 
-let const_p = cint_p <|> cbool_p
 let econst_p = (fun v -> EConst v) <$> const_p
 let evar_p = (fun v -> EVar v) <$> var_p
+let etuple_p p = (fun t -> ETuple t) <$> parens_or_not_asc @@ tuple_p p
 
 let ebinop_p expr =
   let helper p op = empty *> p *> return (fun e1 e2 -> EBinop (op, e1, e2)) in
@@ -125,8 +170,8 @@ let eapp_p expr_p1 expr_p2 =
        (many1 @@ (empty1 *> expr_p2))
 ;;
 
-let fun_args_p = many (parens_or_not var_p)
-let fun_args_p1 = many1 (parens_or_not var_p)
+let fun_args_p = many (parens_or_not_desc patt_p)
+let fun_args_p1 = many1 (parens_or_not_desc patt_p)
 let efun args body = List.fold_right (fun arg acc -> EFun (arg, acc)) args body
 
 let econd pif expr_p =
@@ -146,44 +191,60 @@ let efun_p expr_p =
        (wspaces_str "->" *> expr_p)
 ;;
 
-let rec_p = wspaces_str "let" *> option None ((fun r -> Some r) <$> wspaces_str "rec")
+let rec_p = wspaces_str "let" *> wspaces_str "rec"
+let let_p = wspaces_str "let"
 
 let elet_fun_p expr_p =
   empty
-  *> lift4
-       (fun opt name args body ->
-         let body = efun args body in
-         match opt with
-         | None -> ELet (name, body)
-         | Some _ -> ELetRec (name, body))
-       rec_p
-       var_p
-       fun_args_p
-       (wspaces_str "=" *> expr_p)
+  *> (lift3
+        (fun name args body ->
+          let body = efun args body in
+          ELetRec (name, body))
+        (rec_p *> var_p)
+        fun_args_p
+        (wspaces_str "=" *> expr_p)
+      <|> lift3
+            (fun name args body ->
+              let body = efun args body in
+              ELet (name, body))
+            (let_p *> patt_name_p)
+            fun_args_p
+            (wspaces_str "=" *> expr_p))
 ;;
 
 let elet_fun_in_p expr_p =
-  let lift5 f p1 p2 p3 p4 p5 = f <$> p1 <*> p2 <*> p3 <*> p4 <*> p5 in
   empty
-  *> lift5
-       (fun opt name args body1 body2 ->
-         let body1 = efun args body1 in
-         match opt with
-         | None -> ELetIn (name, body1, body2)
-         | Some _ -> ELetRecIn (name, body1, body2))
-       rec_p
-       var_p
-       fun_args_p
-       (wspaces_str "=" *> expr_p)
-       (wspaces_str "in" *> expr_p)
+  *> (lift4
+        (fun name args body1 body2 ->
+          let body1 = efun args body1 in
+          ELetRecIn (name, body1, body2))
+        (rec_p *> var_p)
+        fun_args_p
+        (wspaces_str "=" *> expr_p)
+        (wspaces_str "in" *> expr_p)
+      <|> lift4
+            (fun name args body1 body2 ->
+              let body1 = efun args body1 in
+              ELetIn (name, body1, body2))
+            (let_p *> patt_name_p)
+            fun_args_p
+            (wspaces_str "=" *> expr_p)
+            (wspaces_str "in" *> expr_p))
 ;;
 
 let pack =
   let econst pack = fix @@ fun _ -> econst_p <|> parens @@ pack.econst pack in
   let evar pack = fix @@ fun _ -> evar_p <|> parens @@ pack.evar pack in
+  let etuple pack =
+    fix
+    @@ fun _ ->
+    let parsers = parens_or_not_asc @@ (pack.evar pack <|> pack.econst pack) in
+    etuple_p (parens @@ pack.etuple pack <|> parsers) <|> parens @@ pack.etuple pack
+  in
   let letsin pack = pack.eletin pack <|> pack.eletrecin pack in
   let expr pack =
     pack.ebinop pack
+    <|> pack.etuple pack
     <|> pack.eapply pack
     <|> pack.econdition pack
     <|> pack.efun pack
@@ -242,6 +303,7 @@ let pack =
          <|> pack.eapply pack
          <|> pack.efun pack
          <|> letsin pack)
+      <|> pack.etuple pack
       <|> pack.evar pack
       <|> pack.econst pack
     in
@@ -253,7 +315,7 @@ let pack =
   let eletrecin pack =
     fix @@ fun _ -> elet_fun_in_p @@ pack.expr pack <|> parens @@ pack.eletrecin pack
   in
-  { evar; econst; ebinop; econdition; efun; eletin; eletrecin; eapply; expr }
+  { evar; econst; ebinop; etuple; econdition; efun; eletin; eletrecin; eapply; expr }
 ;;
 
 let expr_p = wspaces_p @@ pack.expr pack
