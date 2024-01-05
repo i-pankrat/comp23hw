@@ -10,6 +10,9 @@ val pp_error : Format.formatter -> error -> unit
 (** Parser of constant *)
 val const_p : Ast.const Angstrom.t
 
+(** Parser of pattern *)
+val patt_p : Ast.pattern Angstrom.t
+
 (** Parser of expression *)
 val expr_p : Ast.expr Angstrom.t
 
