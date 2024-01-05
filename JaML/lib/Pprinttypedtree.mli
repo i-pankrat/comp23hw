@@ -19,3 +19,6 @@ val pp_statements
   -> Format.formatter
   -> Typedtree.tbinding list
   -> unit
+
+(** Pretty printer for typed statements. It prints tstatement without type annotations *)
+val pp_statements_without_types : Format.formatter -> Typedtree.tbinding list -> unit

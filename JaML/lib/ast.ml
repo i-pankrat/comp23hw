@@ -50,3 +50,28 @@ type bindings =
 
 (** Statements type *)
 type statements = bindings list [@@deriving show { with_path = false }]
+
+let pp_bin_op ppf =
+  let open Stdlib.Format in
+  function
+  | Add -> fprintf ppf "+"
+  | Sub -> fprintf ppf "-"
+  | Div -> fprintf ppf "/"
+  | Mul -> fprintf ppf "*"
+  | Xor -> fprintf ppf "^"
+  | And -> fprintf ppf "&&"
+  | Or -> fprintf ppf "||"
+  | Eq -> fprintf ppf "="
+  | Neq -> fprintf ppf "<>"
+  | Gt -> fprintf ppf ">"
+  | Lt -> fprintf ppf "<"
+  | Gte -> fprintf ppf ">="
+  | Lte -> fprintf ppf "<="
+;;
+
+let pp_const ppf =
+  let open Stdlib.Format in
+  function
+  | CBool value -> fprintf ppf "%B" value
+  | CInt value -> fprintf ppf "%d" value
+;;

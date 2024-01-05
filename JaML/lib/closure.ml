@@ -35,17 +35,23 @@ let rec free_variables texpr =
   let union = NameS.union in
   match texpr with
   | TVar (x, ty) -> NameS.singleton (x, ty)
-  | TApp (_, expr, _) | TFun (_, expr, _) -> free_variables expr
+  | TFun (Arg (x, ty), expr, _) ->
+    let fv_expr = free_variables expr in
+    NameS.remove (x, ty) fv_expr
+  | TApp (e1, e2, _) ->
+    let fv_e1 = free_variables e1 in
+    let fv_e2 = free_variables e2 in
+    union fv_e1 fv_e2
   | TIfThenElse (cond, e1, e2, _) ->
     let fv_cond = free_variables cond in
     let fv_e1 = free_variables e1 in
     let fv_e2 = free_variables e2 in
     union (union fv_e1 fv_e2) fv_cond
-  | TBinop (_, e1, e2, _) | TLetIn (_, e1, e2, _) | TLetRecIn (_, e1, e2, _) ->
+  | TBinop (_, e1, e2, _) ->
     let fv_e1 = free_variables e1 in
     let fv_e2 = free_variables e2 in
     union fv_e1 fv_e2
-  | TConst _ -> NameS.empty
+  | TConst _ | TLetIn _ | TLetRecIn _ -> NameS.empty
 ;;
 
 (* The function is designed to create a closure when declaring a function.
@@ -66,7 +72,7 @@ let put_diff_app diff acc =
 (* Function for declaring anonymous functions in let in. *)
 let create_closure_let (elm, env) diff =
   List.fold
-    (EnvM.to_alist diff)
+    (List.rev @@ EnvM.to_alist diff)
     ~init:(elm, env)
     ~f:(fun (elm, env) (key, (_, _, constr)) ->
       match constr with
@@ -79,9 +85,12 @@ let create_closure_let (elm, env) diff =
 let rec get_args_let env known = function
   | TFun (Arg (id, ty1), e2, ty2) ->
     let known' = NameS.add (id, ty1) known in
-    let e2, known, env = get_args_let env known' e2 in
-    TFun (Arg (id, ty1), e2, ty2), known, env
-  | other -> closure_expr env known other
+    let fv_known, e2, known, env = get_args_let env known' e2 in
+    fv_known, TFun (Arg (id, ty1), e2, ty2), known, env
+  | other ->
+    let fv_known = free_variables other in
+    let env, _, expr = closure_expr env known other in
+    fv_known, env, known, expr
 
 and closure_expr env known expr =
   match expr with
@@ -96,9 +105,10 @@ and closure_expr env known expr =
     let e1, known, env = closure_expr env known e1 in
     let e2, known, env = closure_expr env known e2 in
     TBinop (op, e1, e2, ty), known, env
-  | TFun (arg, expr, ty2) ->
-    let expr, known, env = get_args_let env known (TFun (arg, expr, ty2)) in
-    let fv_known = free_variables expr in
+  | TFun (Arg (id, ty1), expr, ty2) ->
+    let fv_known, expr, known, env =
+      get_args_let env NameS.empty (TFun (Arg (id, ty1), expr, ty2))
+    in
     let diff = NameS.diff fv_known known |> NameS.elements in
     let e1, ty = put_diff_arg diff (expr, ty2) in
     let new_id = genid "#closure_fun" in
@@ -127,8 +137,7 @@ and closure_expr env known expr =
     TIfThenElse (cond, e1, e2, ty), known, env
   | TLetRecIn (id, e1, e2, ty) ->
     let known = NameS.singleton (id, ty) in
-    let e1, known', env = get_args_let env known e1 in
-    let fv_known = free_variables e1 in
+    let fv_known, e1, known', env = get_args_let env known e1 in
     let diff =
       (if NameS.cardinal known' = 1 then known' else NameS.diff fv_known known')
       |> NameS.elements
@@ -139,8 +148,7 @@ and closure_expr env known expr =
     let expr, env = create_closure_let (TLetRecIn (id, e1, e2, ty), env) env in
     expr, known, env
   | TLetIn (id, e1, e2, ty) ->
-    let e1, known', env = get_args_let env NameS.empty e1 in
-    let fv_known = free_variables e1 in
+    let fv_known, e1, known', env = get_args_let env NameS.empty e1 in
     let diff =
       (if NameS.is_empty known' then known' else NameS.diff fv_known known')
       |> NameS.elements
@@ -155,10 +163,10 @@ and closure_expr env known expr =
 
 let closure_bindings = function
   | TLet (id, expr, ty) ->
-    let expr, _, _ = get_args_let EnvM.empty NameS.empty expr in
+    let _, expr, _, _ = get_args_let EnvM.empty NameS.empty expr in
     TLet (id, expr, ty)
   | TLetRec (id, expr, ty) ->
-    let expr, _, _ = get_args_let EnvM.empty (NameS.singleton (id, ty)) expr in
+    let _, expr, _, _ = get_args_let EnvM.empty (NameS.singleton (id, ty)) expr in
     TLetRec (id, expr, ty)
 ;;
 

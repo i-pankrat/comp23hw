@@ -207,3 +207,68 @@ let pp_statements sep mode =
   in
   pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf sep) (fun ppf binding -> pp ppf binding)
 ;;
+
+let pp_name ppf = fprintf ppf "%s"
+
+let pp_texpt_wt =
+  let rec helper tabs ppf =
+    let helper = helper tabs in
+    function
+    | TConst (const, _) -> Ast.pp_const ppf const
+    | TVar (var_name, _) -> fprintf ppf "%s" var_name
+    | TBinop (binop, ltexpr, rtexpr, _) ->
+      fprintf ppf "(%a %a %a)" helper ltexpr Ast.pp_bin_op binop helper rtexpr
+    | TApp (fun_texpr, arg_texpr, _) ->
+      fprintf ppf "%a %a" helper fun_texpr helper arg_texpr
+    | TIfThenElse (cond_texpr, then_texpr, else_texpr, _) ->
+      fprintf
+        ppf
+        "%aif %a then %a else %a"
+        space
+        tabs
+        helper
+        cond_texpr
+        helper
+        then_texpr
+        helper
+        else_texpr
+    | TFun (Arg (arg_name, _), texpr, _) ->
+      fprintf ppf "fun %a -> %a" pp_name arg_name helper texpr
+    | TLetIn (name, body_texpt, in_texpr, _) ->
+      fprintf
+        ppf
+        "%alet %a = %a in %a"
+        space
+        tabs
+        pp_name
+        name
+        helper
+        body_texpt
+        helper
+        in_texpr
+    | TLetRecIn (name, body_texpt, in_texpr, _) ->
+      fprintf
+        ppf
+        "%alet rec %a = %a in %a"
+        space
+        tabs
+        pp_name
+        name
+        helper
+        body_texpt
+        helper
+        in_texpr
+  in
+  helper 1
+;;
+
+let pp_tbinding_wt ppf = function
+  | TLetRec (name, body, _) -> fprintf ppf "let rec %a = %a" pp_name name pp_texpt_wt body
+  | TLet (name, body, _) -> fprintf ppf "let %a = %a" pp_name name pp_texpt_wt body
+;;
+
+let pp_statements_without_types =
+  pp_print_list
+    ~pp_sep:(fun ppf _ -> fprintf ppf "\n")
+    (fun ppf binding -> pp_tbinding_wt ppf binding)
+;;
