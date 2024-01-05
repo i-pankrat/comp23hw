@@ -25,25 +25,33 @@ type bin_op =
   | Lte (** a <= b *)
 [@@deriving show { with_path = false }]
 
+type pattern =
+  | PConst of const
+  | PVar of string
+  | PWildcard
+  | PTuple of pattern list
+[@@deriving show { with_path = false }]
+
 (** Expression type *)
 type expr =
   | EConst of const (** An expression for the constant *)
   | EVar of string (** An expression for the variables *)
+  | ETuple of expr list (** An expression for the tuples *)
   | EBinop of bin_op * expr * expr
   (** An expression for the binary operations: +, -, *, / ... *)
   | EApp of expr * expr (** An expression for the function application to the arguments *)
   | EIfThenElse of expr * expr * expr
   (** An expression for condition statement: if expr then expr else expr *)
-  | ELetIn of string * expr * expr
+  | ELetIn of pattern * expr * expr
   (** An expression for let in declaration: let id = expr in expr *)
   | ELetRecIn of string * expr * expr
   (** An expression for let rec in declaration: let rec id = expr in expr *)
-  | EFun of string * expr (** An expression for function: fun id -> expr *)
+  | EFun of pattern * expr (** An expression for function: fun pattern -> expr *)
 [@@deriving show { with_path = false }]
 
 (** Binding type *)
 type bindings =
-  | ELet of string * expr (** An expression for let declaration: let id = expr *)
+  | ELet of pattern * expr (** An expression for let declaration: let id = expr *)
   | ELetRec of string * expr
   (** An expression for let rec declaration: let rec id = expr *)
 [@@deriving show { with_path = false }]
