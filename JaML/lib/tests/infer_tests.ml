@@ -507,7 +507,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = EFun ("x", EVar "x") in
+    let e = EFun (PVar "x", EVar "x") in
     infer_expr e |> run_infer_expr
   in
   [%expect {|
@@ -521,7 +521,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = EFun ("x", EConst (CInt 1)) in
+    let e = EFun (PVar "x", EConst (CInt 1)) in
     infer_expr e |> run_infer_expr
   in
   [%expect
@@ -536,7 +536,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = EFun ("x", EConst (CBool false)) in
+    let e = EFun (PVar "x", EConst (CBool false)) in
     infer_expr e |> run_infer_expr
   in
   [%expect
@@ -611,7 +611,9 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = ELetIn ("id", EFun ("x", EVar "x"), EApp (EVar "id", EConst (CInt 1))) in
+    let e =
+      ELetIn (PVar "id", EFun (PVar "x", EVar "x"), EApp (EVar "id", EConst (CInt 1)))
+    in
     infer_expr e |> run_infer_expr
   in
   [%expect
@@ -635,7 +637,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = [ ELet ("result", EConst (CBool true)) ] in
+    let e = [ ELet (PVar "result", EConst (CBool true)) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -650,7 +652,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = [ ELet ("result", EConst (CInt 4)) ] in
+    let e = [ ELet (PVar "result", EConst (CInt 4)) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect {|
@@ -664,7 +666,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = [ ELet ("result", EFun ("x", EVar "x")) ] in
+    let e = [ ELet (PVar "result", EFun (PVar "x", EVar "x")) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -682,7 +684,7 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = [ ELet ("result", EFun ("x", EConst (CInt 5))) ] in
+    let e = [ ELet (PVar "result", EFun (PVar "x", EConst (CInt 5))) ] in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -702,15 +704,15 @@ let%expect_test _ =
   let _ =
     let e =
       [ ELet
-          ( "sum4"
+          ( PVar "sum4"
           , EFun
-              ( "x"
+              ( PVar "x"
               , EFun
-                  ( "y"
+                  ( PVar "y"
                   , EFun
-                      ( "z"
+                      ( PVar "z"
                       , EFun
-                          ( "w"
+                          ( PVar "w"
                           , EBinop
                               ( Add
                               , EBinop (Add, EVar "x", EVar "y")
@@ -752,7 +754,9 @@ let%expect_test _ =
 let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
-    let e = [ ELet ("apply", EFun ("f", EFun ("a", EApp (EVar "f", EVar "a")))) ] in
+    let e =
+      [ ELet (PVar "apply", EFun (PVar "f", EFun (PVar "a", EApp (EVar "f", EVar "a")))) ]
+    in
     infer_statements e |> run_infer_statements
   in
   [%expect
@@ -779,19 +783,19 @@ let%expect_test _ =
   let _ =
     let e =
       [ ELet
-          ( "apply5"
+          ( PVar "apply5"
           , EFun
-              ( "function"
+              ( PVar "function"
               , EFun
-                  ( "a"
+                  ( PVar "a"
                   , EFun
-                      ( "b"
+                      ( PVar "b"
                       , EFun
-                          ( "c"
+                          ( PVar "c"
                           , EFun
-                              ( "d"
+                              ( PVar "d"
                               , EFun
-                                  ( "e"
+                                  ( PVar "e"
                                   , EApp
                                       ( EApp
                                           ( EApp
@@ -854,13 +858,13 @@ let%expect_test _ =
   let _ =
     let e =
       [ ELet
-          ( "sumn"
+          ( PVar "sumn"
           , EFun
-              ( "x"
+              ( PVar "x"
               , ELetRecIn
                   ( "helper"
                   , EFun
-                      ( "x"
+                      ( PVar "x"
                       , EIfThenElse
                           ( EBinop (Eq, EVar "x", EConst (CInt 1))
                           , EConst (CInt 1)
@@ -915,7 +919,7 @@ let%expect_test _ =
       [ ELetRec
           ( "fact"
           , EFun
-              ( "n"
+              ( PVar "n"
               , EIfThenElse
                   ( EBinop (Eq, EVar "n", EConst (CInt 1))
                   , EConst (CInt 1)
@@ -964,15 +968,15 @@ let%expect_test _ =
   let _ =
     let e =
       [ ELet
-          ( "fac"
+          ( PVar "fac"
           , EFun
-              ( "n"
+              ( PVar "n"
               , ELetRecIn
                   ( "fact"
                   , EFun
-                      ( "n"
+                      ( PVar "n"
                       , EFun
-                          ( "acc"
+                          ( PVar "acc"
                           , EIfThenElse
                               ( EBinop (Lt, EVar "n", EConst (CInt 1))
                               , EVar "acc"
@@ -1037,7 +1041,7 @@ let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
     let e =
-      [ ELetRec ("fix", EFun ("f", EApp (EVar "f", EApp (EVar "fix", EVar "f")))) ]
+      [ ELetRec ("fix", EFun (PVar "f", EApp (EVar "f", EApp (EVar "fix", EVar "f")))) ]
     in
     infer_statements e |> run_infer_statements
   in
@@ -1066,10 +1070,10 @@ let%expect_test _ =
       [ ELetRec
           ( "fix"
           , EFun
-              ( "f"
+              ( PVar "f"
               , EFun
-                  ("eta", EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "eta"))
-              ) )
+                  ( PVar "eta"
+                  , EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "eta") ) ) )
       ]
     in
     infer_statements e |> run_infer_statements
