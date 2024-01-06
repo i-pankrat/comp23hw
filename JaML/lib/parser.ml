@@ -242,6 +242,14 @@ let pack =
     etuple_p (parens @@ pack.etuple pack <|> parsers) <|> parens @@ pack.etuple pack
   in
   let letsin pack = pack.eletin pack <|> pack.eletrecin pack in
+  let etuple pack =
+    fix
+    @@ fun _ ->
+    let parsers =
+      pack.ebinop pack <|> pack.eapply pack <|> pack.econdition pack <|> pack.efun pack
+    in
+    etuple_p (parens @@ pack.etuple pack <|> parsers) <|> parens @@ pack.etuple pack
+  in
   let expr pack =
     pack.ebinop pack
     <|> pack.etuple pack
@@ -281,6 +289,7 @@ let pack =
     @@ fun _ ->
     let efun_parse =
       pack.ebinop pack
+      <|> pack.etuple pack
       <|> pack.eapply pack
       <|> pack.econdition pack
       <|> pack.efun pack
@@ -306,6 +315,7 @@ let pack =
       <|> pack.etuple pack
       <|> pack.evar pack
       <|> pack.econst pack
+      <|> parens_or_not_asc @@ pack.etuple pack
     in
     eapp_p (eapply_fun pack) (eapply_parse pack) <|> parens @@ pack.eapply pack
   in

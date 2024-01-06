@@ -144,6 +144,22 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  interpret_parse
+    show_expr
+    expr_p
+    "fun (x, y, z) -> (x + y - z, (if x > y then z else x + y))";
+  [%expect
+    {|
+    (EFun ((PTuple [(PVar "x"); (PVar "y"); (PVar "z")]),
+       (ETuple
+          [(EBinop (Sub, (EBinop (Add, (EVar "x"), (EVar "y"))), (EVar "z")));
+            (EIfThenElse ((EBinop (Gt, (EVar "x"), (EVar "y"))), (EVar "z"),
+               (EBinop (Add, (EVar "x"), (EVar "y")))))
+            ])
+       )) |}]
+;;
+
+let%expect_test _ =
   interpret_parse show_bindings bindings_p "let x y = y * y";
   [%expect
     {|
@@ -179,7 +195,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   interpret_parse show_pattern patt_p "((a, (b, c),(d, (e, g),(h, j))),(i, k))";
-  [%expect {|
+  [%expect
+    {|
     (PTuple
        [(PTuple
            [(PVar "a"); (PTuple [(PVar "b"); (PVar "c")]);
@@ -193,7 +210,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   interpret_parse show_statements statements_p "let f (a, b, _, d) = (a, b, d)";
-  [%expect {|
+  [%expect
+    {|
     [(ELet ((PVar "f"),
         (EFun ((PTuple [(PVar "a"); (PVar "b"); PWildcard; (PVar "d")]),
            (ETuple [(EVar "a"); (EVar "b"); (EVar "d")])))
@@ -207,7 +225,8 @@ let%expect_test _ =
     show_statements
     statements_p
     "let apply_tuple_to_function func a b c = func (a, b, c)";
-  [%expect {|
+  [%expect
+    {|
     [(ELet ((PVar "apply_tuple_to_function"),
         (EFun ((PVar "func"),
            (EFun ((PVar "a"),
@@ -235,7 +254,8 @@ let%expect_test _ =
     statements_p
     "let strange_tuple ((a, (b, c),(d, (e, g),(h, j))),(i, k)) = ((a, b, c, d), (e, g, \
      h, j), (i, k))";
-  [%expect {|
+  [%expect
+    {|
     [(ELet ((PVar "strange_tuple"),
         (EFun (
            (PTuple
@@ -258,7 +278,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   interpret_parse show_statements statements_p "let fst_sum (a, _) (c, _) = a + c";
-  [%expect {|
+  [%expect
+    {|
     [(ELet ((PVar "fst_sum"),
         (EFun ((PTuple [(PVar "a"); PWildcard]),
            (EFun ((PTuple [(PVar "c"); PWildcard]),
@@ -274,7 +295,8 @@ let%expect_test _ =
     show_statements
     statements_p
     "let f (((((((((((a,b))))), ((((((c, d)))))))))))) = a + b + c + d";
-  [%expect {|
+  [%expect
+    {|
     [(ELet ((PVar "f"),
         (EFun (
            (PTuple
@@ -290,8 +312,55 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  interpret_parse show_statements statements_p "let test a = let (f, s) = a in f + s";
+  [%expect
+    {|
+    [(ELet ((PVar "test"),
+        (EFun ((PVar "a"),
+           (ELetIn ((PTuple [(PVar "f"); (PVar "s")]), (EVar "a"),
+              (EBinop (Add, (EVar "f"), (EVar "s")))))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let tuple_sum fst_tuple snd_fst snd_snd = \n\
+    \    let snd_tuple = (snd_fst, snd_snd) in\n\
+    \    let (fst_fst, fst_snd) = fst_tuple in\n\
+    \    (fst_fst + snd_fst, fst_snd + snd_snd)\n\
+    \    ";
+  [%expect
+    {|
+    [(ELet ((PVar "tuple_sum"),
+        (EFun ((PVar "fst_tuple"),
+           (EFun ((PVar "snd_fst"),
+              (EFun ((PVar "snd_snd"),
+                 (ELetIn ((PVar "snd_tuple"),
+                    (ETuple [(EVar "snd_fst"); (EVar "snd_snd")]),
+                    (ELetIn ((PTuple [(PVar "fst_fst"); (PVar "fst_snd")]),
+                       (EVar "fst_tuple"),
+                       (ETuple
+                          [(EBinop (Add, (EVar "fst_fst"), (EVar "snd_fst")));
+                            (EBinop (Add, (EVar "fst_snd"), (EVar "snd_snd")))])
+                       ))
+                    ))
+                 ))
+              ))
+           ))
+        ))
+      ]
+   |}]
+;;
+
+let%expect_test _ =
   interpret_parse show_statements statements_p "let f (a, b) = a + b";
-  [%expect {|
+  [%expect
+    {|
     [(ELet ((PVar "f"),
         (EFun ((PTuple [(PVar "a"); (PVar "b")]),
            (EBinop (Add, (EVar "a"), (EVar "b")))))
