@@ -104,17 +104,25 @@ end
 module Type = struct
   type t = ty
 
-  let rec occurs_in v = function
+  let rec occurs_in v =
+    let occurs_in_list ts =
+      List.fold ts ~init:false ~f:(fun acc t -> occurs_in v t || acc)
+    in
+    function
     | Tyvar b -> b = v
     | Arrow (l, r) -> occurs_in v l || occurs_in v r
     | Prim _ -> false
+    | Tuple ts -> occurs_in_list ts
   ;;
 
   let free_vars =
-    let rec helper acc = function
+    let rec helper acc =
+      let free_list acc ts = List.fold ts ~init:acc ~f:(fun acc t -> helper acc t) in
+      function
       | Tyvar b -> VarSet.add b acc
       | Arrow (l, r) -> helper (helper acc l) r
       | Prim _ -> acc
+      | Tuple ts -> free_list acc ts
     in
     helper VarSet.empty
   ;;
@@ -150,7 +158,7 @@ end = struct
   (* let pp ppf subst =
      let open Format in
      Map.Poly.iteri subst ~f:(fun ~key ~data ->
-     fprintf ppf "'_%d -> %a@\n" key (Ty.pp_ty_with_subs None) data)
+     fprintf ppf "'_%d -> %a@\n" key (Pprintty.pp_ty_with_subs None) data)
      ;; *)
 
   let empty = Map.Poly.empty
@@ -176,6 +184,7 @@ end = struct
          | exception Not_found_s _ -> ty
          | x -> x)
       | Arrow (l, r) -> Arrow (helper l, helper r)
+      | Tuple elems -> Tuple (List.map ~f:helper elems)
       | other -> other
     in
     helper
@@ -191,6 +200,19 @@ end = struct
       let* subs1 = unify l1 l2 in
       let* subs2 = unify (apply subs1 r1) (apply subs1 r2) in
       compose subs1 subs2
+    | Tuple a, Tuple b ->
+      (match
+         List.fold2
+           ~init:(return empty)
+           ~f:(fun acc a b ->
+             let* acc = acc in
+             let* sub = unify a b in
+             compose acc sub)
+           a
+           b
+       with
+       | Ok res -> res
+       | _ -> fail (`Unification_failed (l, r)))
     | _ -> fail (`Unification_failed (l, r))
 
   and extend key value extensible_subst =
@@ -307,6 +329,37 @@ let lookup_env var env =
    TypeEnv.pp ppf env
    ;; *)
 
+let infer_pattern =
+  let rec (helper : TypeEnv.t -> Ast.pattern -> (TypeEnv.t * ty * tpattern) R.t) =
+    fun env pattern ->
+    match pattern with
+    | PConst const ->
+      (match const with
+       | CBool _ -> return (env, tybool, (pattern, tybool))
+       | CInt _ -> return (env, tyint, (pattern, tyint)))
+    | PVar arg ->
+      let* tv = fresh_var in
+      let env = TypeEnv.extend env (arg, S (VarSet.empty, tv)) in
+      return (env, tv, (pattern, tv))
+    | PWildcard ->
+      let* tv = fresh_var in
+      return (env, tv, (pattern, tv))
+    | PTuple tuple ->
+      let* env, ty =
+        List.fold
+          ~init:(return (env, []))
+          ~f:(fun acc elem ->
+            let* env, types = acc in
+            let* env, typ, _ = helper env elem in
+            return (env, typ :: types))
+          tuple
+      in
+      let tuple_typ = Ty.tuple (List.rev ty) in
+      return (env, tuple_typ, (pattern, tuple_typ))
+  in
+  helper
+;;
+
 let infer_expr =
   let open Ast in
   let rec (helper : TypeEnv.t -> Ast.expr -> (Subst.t * ty * texpr) R.t) =
@@ -362,13 +415,22 @@ let infer_expr =
         ( final_subst
         , Subst.apply final_subst t2
         , tifthenelse te1 te2 te3 (Subst.apply final_subst t2) )
-    | ELetIn (PVar name, e1, e2) ->
+    | ELetIn (pattern, e1, e2) ->
       let* s1, t1_typ, te1 = helper env e1 in
       let env2 = TypeEnv.apply s1 env in
-      let t1 = generalize env2 t1_typ in
-      let* s2, t3, te2 = helper (TypeEnv.extend env2 (name, t1)) e2 in
-      let* final_subst = Subst.compose s1 s2 in
-      return (final_subst, t3, tletin name te1 te2 t1_typ)
+      let* env2, pattern_typ, (pattern, _) = infer_pattern env2 pattern in
+      let* pattern_subst = unify pattern_typ t1_typ in
+      let t1_typ = Subst.apply pattern_subst t1_typ in
+      let env3 =
+        match pattern with
+        | PVar name ->
+          let generalized_pat_typ = generalize env2 t1_typ in
+          TypeEnv.extend env2 (name, generalized_pat_typ)
+        | _ -> env2
+      in
+      let* s2, t2, te2 = helper env3 e2 in
+      let* final_subst = Subst.compose_all [ s1; s2; pattern_subst ] in
+      return (final_subst, t2, tletin pattern te1 te2 t1_typ)
     | ELetRecIn (name, e1, e2) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
@@ -380,12 +442,24 @@ let infer_expr =
       let* s2, t2, te2 = helper TypeEnv.(extend (apply s env) (name, t2)) e2 in
       let* final_subst = Subst.compose s s2 in
       return (final_subst, t2, tletrecin name te1 te2 t1)
-    | EFun (PVar arg, e) ->
-      let* tv = fresh_var in
-      let env = TypeEnv.extend env (arg, S (VarSet.empty, tv)) in
-      let* s1, t1, te1 = helper env e in
-      let typedres = Arrow (Subst.apply s1 tv, t1) in
-      return (s1, typedres, tfun arg tv te1 typedres)
+    | EFun (pattern, e) ->
+      let* env2, pattern_typ, tpattern = infer_pattern env pattern in
+      let* s1, t1, te1 = helper env2 e in
+      let typedres = Arrow (Subst.apply s1 pattern_typ, t1) in
+      return (s1, typedres, tfun tpattern te1 typedres)
+    | ETuple tuple ->
+      let* fin_subst, tuple_types, tuple_texpr =
+        List.fold
+          tuple
+          ~init:(return (Subst.empty, [], []))
+          ~f:(fun acc expr ->
+            let* tuple_s, tuple_types, tuple_elems = acc in
+            let* expr_s, expr_typ, expr_texpr = helper env expr in
+            let* subst = Subst.compose expr_s tuple_s in
+            return (subst, expr_typ :: tuple_types, expr_texpr :: tuple_elems))
+      in
+      let rev_tuple_type = Ty.tuple @@ List.rev tuple_types in
+      return (fin_subst, rev_tuple_type, ttuple (List.rev tuple_texpr) rev_tuple_type)
   in
   helper
 ;;
@@ -394,9 +468,12 @@ let infer_binding env =
   let open Ast in
   let open Typedtree in
   function
-  | ELet (PVar name, e) ->
+  | ELet (pattern, e) ->
+    let* env, ty, (pattern, _) = infer_pattern env pattern in
     let* s, t, te = infer_expr env e in
-    return (s, t, tlet name te t)
+    let* extra_subst = unify (Subst.apply s ty) t in
+    let* final_subst = Subst.compose s extra_subst in
+    return (final_subst, Subst.apply final_subst t, tlet pattern te t)
   | ELetRec (name, e) ->
     let* tv = fresh_var in
     let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
@@ -412,13 +489,16 @@ let fix_typedtree subst =
     | TVar (name, typ) -> tvar name (apply_subst typ)
     | TBinop (op, e1, e2, typ) -> tbinop op (helper e1) (helper e2) (apply_subst typ)
     | TApp (e1, e2, typ) -> tapp (helper e1) (helper e2) (apply_subst typ)
-    | TLetIn (name, e1, e2, typ) -> tletin name (helper e1) (helper e2) (apply_subst typ)
+    | TLetIn (pattern, e1, e2, typ) ->
+      tletin pattern (helper e1) (helper e2) (apply_subst typ)
     | TLetRecIn (name, e1, e2, typ) ->
       tletrecin name (helper e1) (helper e2) (apply_subst typ)
-    | TFun (Arg (name, arg_typ), e, typ) ->
-      tfun name (apply_subst arg_typ) (helper e) (apply_subst typ)
+    | TFun ((pattern, pattern_typ), e, typ) ->
+      tfun (pattern, apply_subst pattern_typ) (helper e) (apply_subst typ)
     | TIfThenElse (i, t, e, typ) ->
       tifthenelse (helper i) (helper t) (helper e) (apply_subst typ)
+    | TTuple (texpr, ty) ->
+      ttuple (List.map texpr ~f:(fun texpr -> helper texpr)) (apply_subst ty)
     | other -> other
   in
   helper
@@ -435,7 +515,7 @@ let infer_expr e =
 let fix_typedtree subst =
   let apply_subst = Subst.apply subst in
   function
-  | TLet (name, e, typ) -> tlet name (fix_typedtree subst e) (apply_subst typ)
+  | TLet (pattern, e, typ) -> tlet pattern (fix_typedtree subst e) (apply_subst typ)
   | TLetRec (name, e, typ) -> tletrec name (fix_typedtree subst e) (apply_subst typ)
 ;;
 
@@ -446,7 +526,15 @@ let infer_statements (bindings : Ast.statements) : tbinding list t =
       ~init:(return (empty, []))
       ~f:(fun env_binding ->
         function
-        | (ELet (PVar name, _) | ELetRec (name, _)) as new_binding ->
+        | ELet (pattern, _) as new_binding ->
+          let* env, tbindings = env_binding in
+          let* subst, ty, tbinding = infer_binding env new_binding in
+          let* env, pat_typ, _ = infer_pattern env pattern in
+          let* subst2 = unify pat_typ ty in
+          let* fin_subst = Subst.compose subst subst2 in
+          let env = TypeEnv.apply fin_subst env in
+          return (env, fix_typedtree fin_subst tbinding :: tbindings)
+        | ELetRec (name, _) as new_binding ->
           let* env, tbindings = env_binding in
           let* subst, ty, tbinding = infer_binding env new_binding in
           return
