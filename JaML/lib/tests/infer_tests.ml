@@ -632,6 +632,21 @@ let%expect_test _ =
 |}]
 ;;
 
+(** Tests for tuples *)
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      ETuple
+        [ EConst (CInt 1); EConst (CBool true); EConst (CBool false); EConst (CInt 2) ]
+    in
+    infer_expr e |> run_infer_expr
+  in
+  [%expect
+    {| ((TConst((CInt 1): int)), (TConst((CBool true): bool)), (TConst((CBool false): bool)), (TConst((CInt 2): int))) : (int*bool*bool*int) |}]
+;;
+
 (** Statements tests *)
 
 let%expect_test _ =
@@ -1097,6 +1112,282 @@ let%expect_test _ =
                     (eta: 'a)
                 ))
             ))
+        ))
+    ))
+|}]
+;;
+
+(** Tests for tuples and patterns *)
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e = [ ELet (PVar "a", ETuple [ EConst (CInt 1); EConst (CInt 2) ]) ] in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        a: (int*int),
+        ((TConst((CInt 1): int)), (TConst((CInt 2): int))) : (int*int)
+    ))
+
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e = [ ELet (PVar "fst", EFun (PTuple [ PVar "a"; PWildcard ], EVar "a")) ] in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        fst: (('a*'b) -> 'a),
+        (TFun: (('a*'b) -> 'a) (
+            ((a, _): ('a*'b)),
+            (a: 'a)
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e = [ ELet (PVar "snd", EFun (PTuple [ PWildcard; PVar "b" ], EVar "b")) ] in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        snd: (('a*'b) -> 'b),
+        (TFun: (('a*'b) -> 'b) (
+            ((_, b): ('a*'b)),
+            (b: 'b)
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELet
+          ( PVar "pair_sum"
+          , EFun (PTuple [ PVar "a"; PVar "b" ], EBinop (Add, EVar "a", EVar "b")) )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        pair_sum: ((int*int) -> int),
+        (TFun: ((int*int) -> int) (
+            ((a, b): (int*int)),
+            (Add: (int -> (int -> int)) (
+                (a: int),
+                (b: int)
+            ))
+        ))
+    ))
+
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELet
+          ( PVar "pair_sum"
+          , EFun
+              ( PVar "pair"
+              , ELetIn
+                  ( PTuple [ PVar "f"; PVar "s" ]
+                  , EVar "pair"
+                  , EBinop (Add, EVar "f", EVar "s") ) ) )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        pair_sum: ((int*int) -> int),
+        (TFun: ((int*int) -> int) (
+            (pair: (int*int)),
+            (TLetIn(
+                (f, s): (int*int),
+                (pair: (int*int)),
+                (Add: (int -> (int -> int)) (
+                    (f: int),
+                    (s: int)
+                ))
+            ))
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e = [ ELet (PVar "constant", EFun (PWildcard, EConst (CInt 5))) ] in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        constant: ('a -> int),
+        (TFun: ('a -> int) (
+            (_: 'a),
+            (TConst((CInt 5): int))
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELet
+          ( PVar "sum_of_two_pair"
+          , EFun
+              ( PVar "one"
+              , EFun
+                  ( PVar "two"
+                  , ELetIn
+                      ( PTuple [ PVar "f1"; PVar "s1" ]
+                      , EVar "one"
+                      , ELetIn
+                          ( PTuple [ PVar "f2"; PVar "s2" ]
+                          , EVar "two"
+                          , ETuple
+                              [ EBinop (Add, EVar "f1", EVar "f2")
+                              ; EBinop (Add, EVar "s1", EVar "s2")
+                              ] ) ) ) ) )
+      ; ELet (PVar "second_pair", ETuple [ EConst (CInt 1); EConst (CInt 2) ])
+      ; ELet
+          ( PVar "test_sum_of_two_pair"
+          , EApp
+              ( EApp (EVar "sum_of_two_pair", ETuple [ EConst (CInt 3); EConst (CInt 4) ])
+              , EVar "second_pair" ) )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        sum_of_two_pair: ((int*int) -> ((int*int) -> (int*int))),
+        (TFun: ((int*int) -> ((int*int) -> (int*int))) (
+            (one: (int*int)),
+            (TFun: ((int*int) -> (int*int)) (
+                (two: (int*int)),
+                (TLetIn(
+                    (f1, s1): (int*int),
+                    (one: (int*int)),
+                    (TLetIn(
+                        (f2, s2): (int*int),
+                        (two: (int*int)),
+                        ((Add: (int -> (int -> int)) (
+                            (f1: int),
+                            (f2: int)
+                        )), (Add: (int -> (int -> int)) (
+                            (s1: int),
+                            (s2: int)
+                        ))) : (int*int)
+                    ))
+                ))
+            ))
+        ))
+    ));
+    (TLet(
+        second_pair: (int*int),
+        ((TConst((CInt 1): int)), (TConst((CInt 2): int))) : (int*int)
+    ));
+    (TLet(
+        test_sum_of_two_pair: (int*int),
+        (TApp: (int*int) (
+            (TApp: ((int*int) -> (int*int)) (
+                (sum_of_two_pair: ((int*int) -> ((int*int) -> (int*int)))),
+                ((TConst((CInt 3): int)), (TConst((CInt 4): int))) : (int*int)
+            )),
+            (second_pair: (int*int))
+        ))
+    ))
+|}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELet
+          ( PVar "map_pair"
+          , EFun
+              ( PVar "f"
+              , EFun
+                  ( PTuple [ PVar "a"; PVar "b" ]
+                  , ETuple [ EApp (EVar "f", EVar "a"); EApp (EVar "f", EVar "b") ] ) ) )
+      ; ELet
+          ( PVar "multiply_pair_by_two"
+          , EApp
+              (EVar "map_pair", EFun (PVar "a", EBinop (Mul, EVar "a", EConst (CInt 2))))
+          )
+      ; ELet (PVar "test_pair", ETuple [ EConst (CInt 2); EConst (CInt 2) ])
+      ; ELet
+          ( PVar "test_muptiply_pair_by_two"
+          , EApp (EVar "multiply_pair_by_two", EVar "test_pair") )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        map_pair: (('a -> 'b) -> (('a*'a) -> ('b*'b))),
+        (TFun: (('a -> 'b) -> (('a*'a) -> ('b*'b))) (
+            (f: ('a -> 'b)),
+            (TFun: (('a*'a) -> ('b*'b)) (
+                ((a, b): ('a*'a)),
+                ((TApp: 'b (
+                    (f: ('a -> 'b)),
+                    (a: 'a)
+                )), (TApp: 'b (
+                    (f: ('a -> 'b)),
+                    (b: 'a)
+                ))) : ('b*'b)
+            ))
+        ))
+    ));
+    (TLet(
+        multiply_pair_by_two: ((int*int) -> (int*int)),
+        (TApp: ((int*int) -> (int*int)) (
+            (map_pair: ((int -> int) -> ((int*int) -> (int*int)))),
+            (TFun: (int -> int) (
+                (a: int),
+                (Mul: (int -> (int -> int)) (
+                    (a: int),
+                    (TConst((CInt 2): int))
+                ))
+            ))
+        ))
+    ));
+    (TLet(
+        test_pair: (int*int),
+        ((TConst((CInt 2): int)), (TConst((CInt 2): int))) : (int*int)
+    ));
+    (TLet(
+        test_muptiply_pair_by_two: (int*int),
+        (TApp: (int*int) (
+            (multiply_pair_by_two: ((int*int) -> (int*int))),
+            (test_pair: (int*int))
         ))
     ))
 |}]
