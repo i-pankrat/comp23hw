@@ -5,29 +5,35 @@
 open Ast
 
 (** Typed patterns *)
-type tpattern = pattern * Ty.ty
+type tpattern =
+  | TPConst of const * Ty.ty
+  | TPVar of string * Ty.ty
+  | TPWildcard of Ty.ty
+  | TPTuple of tpattern list * Ty.ty
+
+type typed_name = string * Ty.ty
+type typed_binop = bin_op * Ty.ty
 
 (** Typed expession type *)
 type texpr =
   | TConst of const * Ty.ty (** Typed expression for the constant *)
   | TVar of string * Ty.ty (** Typed expression for the variables *)
-  | TBinop of bin_op * texpr * texpr * Ty.ty
+  | TBinop of typed_binop * texpr * texpr
   (** Typed expression for the binary operations *)
   | TApp of texpr * texpr * Ty.ty
   (** Typed expression for the function application to the arguments *)
   | TIfThenElse of texpr * texpr * texpr * Ty.ty
   (** Typed expression for condition statement *)
-  | TLetIn of pattern * texpr * texpr * Ty.ty
-  (** Typed expression for let in declaration *)
-  | TLetRecIn of string * texpr * texpr * Ty.ty
+  | TLetIn of tpattern * texpr * texpr (** Typed expression for let in declaration *)
+  | TLetRecIn of typed_name * texpr * texpr
   (** Typed expression for let rec in declaration *)
   | TFun of tpattern * texpr * Ty.ty (** Typed expression for function *)
   | TTuple of texpr list * Ty.ty (** Typed expression for the tuples *)
 
 (** Typed binding type *)
 type tbinding =
-  | TLet of pattern * texpr * Ty.ty (** Typed expression for let declaration *)
-  | TLetRec of string * texpr * Ty.ty (** Typed expression for let rec declaration *)
+  | TLet of tpattern * texpr (** Typed expression for let declaration *)
+  | TLetRec of typed_name * texpr (** Typed expression for let rec declaration *)
 
 (** Typed statements type *)
 type tstatements = tbinding list
@@ -36,15 +42,15 @@ type tstatements = tbinding list
 
 val tconst : Ast.const -> Ty.ty -> texpr
 val tvar : string -> Ty.ty -> texpr
-val tbinop : Ast.bin_op -> texpr -> texpr -> Ty.ty -> texpr
+val tbinop : Ast.bin_op -> Ty.ty -> texpr -> texpr -> texpr
 val tapp : texpr -> texpr -> Ty.ty -> texpr
 val tifthenelse : texpr -> texpr -> texpr -> Ty.ty -> texpr
-val tletin : pattern -> texpr -> texpr -> Ty.ty -> texpr
+val tletin : tpattern -> texpr -> texpr -> texpr
 val tletrecin : string -> texpr -> texpr -> Ty.ty -> texpr
 val tfun : tpattern -> texpr -> Ty.ty -> texpr
 val ttuple : texpr list -> Ty.ty -> texpr
 
 (** tbindings constructors *)
 
-val tlet : pattern -> texpr -> Ty.ty -> tbinding
-val tletrec : string -> texpr -> Ty.ty -> tbinding
+val tlet : tpattern -> texpr -> tbinding
+val tletrec : string -> Ty.ty -> texpr -> tbinding
