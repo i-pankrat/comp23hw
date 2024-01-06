@@ -9,15 +9,16 @@
   Inferencer
   Pprintty
   Pprinttypedtree
-  Pprinttopleveltree
-  Pprintanf
-  Lambdalift
-  Alpha
-  Closure
-  Counter
-  Toplevel
-  Anf
-  Anfconv)
+  ; Pprinttopleveltree
+  ; Pprintanf
+  ; Lambdalift
+  ; Alpha
+  ; Closure
+  ; Counter
+  ; Toplevel
+  ; Anf
+  ; Anfconv
+  )
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))

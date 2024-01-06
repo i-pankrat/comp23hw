@@ -16,8 +16,10 @@ type ty =
   | Tyvar of int (** Represent polymorphic type *)
   | Prim of prim (** Ground types *)
   | Arrow of ty * ty (** Type for function *)
+  | Tuple of ty list (** Type for tuples *)
 
 val tyint : ty
 val tybool : ty
 val arrow : ty -> ty -> ty
 val var_typ : int -> ty
+val tuple : ty list -> ty

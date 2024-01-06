@@ -1,6 +1,7 @@
 (library
  (name tests)
  (libraries JaML.Lib stdio)
+ (modules parser_test infer_tests)
  (instrumentation
   (backend bisect_ppx))
  (inline_tests)
