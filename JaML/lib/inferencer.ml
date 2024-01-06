@@ -418,7 +418,7 @@ let infer_expr =
     | ELetIn (pattern, e1, e2) ->
       let* s1, t1_typ, te1 = helper env e1 in
       let env2 = TypeEnv.apply s1 env in
-      let* env2, pattern_typ, tpatern = infer_pattern env2 pattern in
+      let* env2, pattern_typ, (pattern, _) = infer_pattern env2 pattern in
       let* pattern_subst = unify pattern_typ t1_typ in
       let t1_typ = Subst.apply pattern_subst t1_typ in
       let env3 =
@@ -430,7 +430,7 @@ let infer_expr =
       in
       let* s2, t2, te2 = helper env3 e2 in
       let* final_subst = Subst.compose_all [ s1; s2; pattern_subst ] in
-      return (final_subst, t2, tletin tpatern te1 te2 t1_typ)
+      return (final_subst, t2, tletin pattern te1 te2 t1_typ)
     | ELetRecIn (name, e1, e2) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
@@ -469,11 +469,11 @@ let infer_binding env =
   let open Typedtree in
   function
   | ELet (pattern, e) ->
-    let* env, ty, tpattern = infer_pattern env pattern in
+    let* env, ty, (pattern, _) = infer_pattern env pattern in
     let* s, t, te = infer_expr env e in
     let* extra_subst = unify (Subst.apply s ty) t in
     let* final_subst = Subst.compose s extra_subst in
-    return (final_subst, Subst.apply final_subst t, tlet tpattern te t)
+    return (final_subst, Subst.apply final_subst t, tlet pattern te t)
   | ELetRec (name, e) ->
     let* tv = fresh_var in
     let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
@@ -489,12 +489,12 @@ let fix_typedtree subst =
     | TVar (name, typ) -> tvar name (apply_subst typ)
     | TBinop (op, e1, e2, typ) -> tbinop op (helper e1) (helper e2) (apply_subst typ)
     | TApp (e1, e2, typ) -> tapp (helper e1) (helper e2) (apply_subst typ)
-    | TLetIn ((tpattern, pattern_typ), e1, e2, typ) ->
-      tletin (tpattern, apply_subst pattern_typ) (helper e1) (helper e2) (apply_subst typ)
+    | TLetIn (pattern, e1, e2, typ) ->
+      tletin pattern (helper e1) (helper e2) (apply_subst typ)
     | TLetRecIn (name, e1, e2, typ) ->
       tletrecin name (helper e1) (helper e2) (apply_subst typ)
-    | TFun ((tpattern, pattern_typ), e, typ) ->
-      tfun (tpattern, apply_subst pattern_typ) (helper e) (apply_subst typ)
+    | TFun ((pattern, pattern_typ), e, typ) ->
+      tfun (pattern, apply_subst pattern_typ) (helper e) (apply_subst typ)
     | TIfThenElse (i, t, e, typ) ->
       tifthenelse (helper i) (helper t) (helper e) (apply_subst typ)
     | TTuple (texpr, ty) ->
@@ -515,8 +515,7 @@ let infer_expr e =
 let fix_typedtree subst =
   let apply_subst = Subst.apply subst in
   function
-  | TLet ((tpattern, pattern_typ), e, typ) ->
-    tlet (tpattern, apply_subst pattern_typ) (fix_typedtree subst e) (apply_subst typ)
+  | TLet (pattern, e, typ) -> tlet pattern (fix_typedtree subst e) (apply_subst typ)
   | TLetRec (name, e, typ) -> tletrec name (fix_typedtree subst e) (apply_subst typ)
 ;;
 

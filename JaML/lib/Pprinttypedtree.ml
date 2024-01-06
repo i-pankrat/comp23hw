@@ -105,7 +105,7 @@ let pp_texpr_with_subs ppf depth subs texpr =
         e2
         space
         (depth - 1)
-    | TLetIn ((pattern, _), e1, e2, typ) ->
+    | TLetIn (pattern, e1, e2, typ) ->
       fprintf
         ppf
         "(TLetIn(%a%a: %a,%a%a,%a%a%a))"
@@ -223,7 +223,7 @@ let pp_tbinding_complete ppf = function
       1
       pp_expr
       e
-  | TLet ((pattern, _), e, typ) as binding ->
+  | TLet (pattern, e, typ) as binding ->
     let subs, _ = get_texpr_subst e in
     let pp_ty = Pprintty.pp_ty_with_subs (Some subs) in
     let pp_expr ppf = pp_texpr_with_subs ppf 2 subs in
@@ -247,7 +247,7 @@ let pp_tbinding_brief ppf = function
   | TLetRec (name, _, typ) ->
     let pp_ty = Pprintty.pp_ty in
     fprintf ppf "%s: %a" name pp_ty typ
-  | TLet ((pat, _), _, typ) ->
+  | TLet (pat, _, typ) ->
     let pp_ty = Pprintty.pp_ty in
     fprintf ppf "%a: %a" pp_pattern pat pp_ty typ
 ;;
@@ -289,7 +289,7 @@ let pp_texpt_wt =
         else_texpr
     | TFun ((pattern, _), texpr, _) ->
       fprintf ppf "fun %a -> %a" pp_pattern pattern helper texpr
-    | TLetIn ((pattern, _), body_texpt, in_texpr, _) ->
+    | TLetIn (pattern, body_texpt, in_texpr, _) ->
       fprintf
         ppf
         "%alet %a = %a in %a"
@@ -327,7 +327,7 @@ let pp_texpt_wt =
 
 let pp_tbinding_wt ppf = function
   | TLetRec (name, body, _) -> fprintf ppf "let rec %a = %a" pp_name name pp_texpt_wt body
-  | TLet ((pattern, _), body, _) ->
+  | TLet (pattern, body, _) ->
     fprintf ppf "let %a = %a" pp_pattern pattern pp_texpt_wt body
 ;;
 

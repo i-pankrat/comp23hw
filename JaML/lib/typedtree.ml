@@ -18,7 +18,7 @@ type texpr =
   (** Typed expression for the function application to the arguments *)
   | TIfThenElse of texpr * texpr * texpr * ty
   (** Typed expression for condition statement *)
-  | TLetIn of tpattern * texpr * texpr * ty (** Typed expression for let in declaration *)
+  | TLetIn of pattern * texpr * texpr * ty (** Typed expression for let in declaration *)
   | TLetRecIn of string * texpr * texpr * ty
   (** Typed expression for let rec in declaration *)
   | TFun of tpattern * texpr * ty (** Typed expression for function *)
@@ -26,7 +26,7 @@ type texpr =
 
 (** Typed binding type *)
 type tbinding =
-  | TLet of tpattern * texpr * ty (** Typed expression for let declaration *)
+  | TLet of pattern * texpr * ty (** Typed expression for let declaration *)
   | TLetRec of string * texpr * ty (** Typed expression for let rec declaration *)
 
 (** Typed statements type *)
