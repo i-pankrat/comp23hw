@@ -235,12 +235,6 @@ let elet_fun_in_p expr_p =
 let pack =
   let econst pack = fix @@ fun _ -> econst_p <|> parens @@ pack.econst pack in
   let evar pack = fix @@ fun _ -> evar_p <|> parens @@ pack.evar pack in
-  let etuple pack =
-    fix
-    @@ fun _ ->
-    let parsers = parens_or_not_asc @@ (pack.evar pack <|> pack.econst pack) in
-    etuple_p (parens @@ pack.etuple pack <|> parsers) <|> parens @@ pack.etuple pack
-  in
   let letsin pack = pack.eletin pack <|> pack.eletrecin pack in
   let etuple pack =
     fix
@@ -312,7 +306,6 @@ let pack =
          <|> pack.eapply pack
          <|> pack.efun pack
          <|> letsin pack)
-      <|> pack.etuple pack
       <|> pack.evar pack
       <|> pack.econst pack
       <|> parens_or_not_asc @@ pack.etuple pack
