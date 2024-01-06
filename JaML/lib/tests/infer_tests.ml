@@ -644,7 +644,7 @@ let%expect_test _ =
     infer_expr e |> run_infer_expr
   in
   [%expect
-    {| ((TConst((CInt 1): int)), (TConst((CBool true): bool)), (TConst((CBool false): bool)), (TConst((CInt 2): int))) : (int*bool*bool*int) |}]
+    {| ((TConst((CInt 1): int)), (TConst((CBool true): bool)), (TConst((CBool false): bool)), (TConst((CInt 2): int))) : (int * bool * bool * int) |}]
 ;;
 
 (** Statements tests *)
@@ -1128,8 +1128,8 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        a: (int*int),
-        ((TConst((CInt 1): int)), (TConst((CInt 2): int))) : (int*int)
+        a: (int * int),
+        ((TConst((CInt 1): int)), (TConst((CInt 2): int))) : (int * int)
     ))
 
 |}]
@@ -1144,9 +1144,9 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        fst: (('a*'b) -> 'a),
-        (TFun: (('a*'b) -> 'a) (
-            ((a, _): ('a*'b)),
+        fst: (('a * 'b) -> 'a),
+        (TFun: (('a * 'b) -> 'a) (
+            ((a, _): ('a * 'b)),
             (a: 'a)
         ))
     ))
@@ -1162,9 +1162,9 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        snd: (('a*'b) -> 'b),
-        (TFun: (('a*'b) -> 'b) (
-            ((_, b): ('a*'b)),
+        snd: (('a * 'b) -> 'b),
+        (TFun: (('a * 'b) -> 'b) (
+            ((_, b): ('a * 'b)),
             (b: 'b)
         ))
     ))
@@ -1185,9 +1185,9 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        pair_sum: ((int*int) -> int),
-        (TFun: ((int*int) -> int) (
-            ((a, b): (int*int)),
+        pair_sum: ((int * int) -> int),
+        (TFun: ((int * int) -> int) (
+            ((a, b): (int * int)),
             (Add: (int -> (int -> int)) (
                 (a: int),
                 (b: int)
@@ -1217,12 +1217,12 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        pair_sum: ((int*int) -> int),
-        (TFun: ((int*int) -> int) (
-            (pair: (int*int)),
+        pair_sum: ((int * int) -> int),
+        (TFun: ((int * int) -> int) (
+            (pair: (int * int)),
             (TLetIn(
-                (f, s): (int*int),
-                (pair: (int*int)),
+                (f, s): (int * int),
+                (pair: (int * int)),
                 (Add: (int -> (int -> int)) (
                     (f: int),
                     (s: int)
@@ -1284,41 +1284,41 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        sum_of_two_pair: ((int*int) -> ((int*int) -> (int*int))),
-        (TFun: ((int*int) -> ((int*int) -> (int*int))) (
-            (one: (int*int)),
-            (TFun: ((int*int) -> (int*int)) (
-                (two: (int*int)),
+        sum_of_two_pair: ((int * int) -> ((int * int) -> (int * int))),
+        (TFun: ((int * int) -> ((int * int) -> (int * int))) (
+            (one: (int * int)),
+            (TFun: ((int * int) -> (int * int)) (
+                (two: (int * int)),
                 (TLetIn(
-                    (f1, s1): (int*int),
-                    (one: (int*int)),
+                    (f1, s1): (int * int),
+                    (one: (int * int)),
                     (TLetIn(
-                        (f2, s2): (int*int),
-                        (two: (int*int)),
+                        (f2, s2): (int * int),
+                        (two: (int * int)),
                         ((Add: (int -> (int -> int)) (
                             (f1: int),
                             (f2: int)
                         )), (Add: (int -> (int -> int)) (
                             (s1: int),
                             (s2: int)
-                        ))) : (int*int)
+                        ))) : (int * int)
                     ))
                 ))
             ))
         ))
     ));
     (TLet(
-        second_pair: (int*int),
-        ((TConst((CInt 1): int)), (TConst((CInt 2): int))) : (int*int)
+        second_pair: (int * int),
+        ((TConst((CInt 1): int)), (TConst((CInt 2): int))) : (int * int)
     ));
     (TLet(
-        test_sum_of_two_pair: (int*int),
-        (TApp: (int*int) (
-            (TApp: ((int*int) -> (int*int)) (
-                (sum_of_two_pair: ((int*int) -> ((int*int) -> (int*int)))),
-                ((TConst((CInt 3): int)), (TConst((CInt 4): int))) : (int*int)
+        test_sum_of_two_pair: (int * int),
+        (TApp: (int * int) (
+            (TApp: ((int * int) -> (int * int)) (
+                (sum_of_two_pair: ((int * int) -> ((int * int) -> (int * int)))),
+                ((TConst((CInt 3): int)), (TConst((CInt 4): int))) : (int * int)
             )),
-            (second_pair: (int*int))
+            (second_pair: (int * int))
         ))
     ))
 |}]
@@ -1351,25 +1351,25 @@ let%expect_test _ =
   [%expect
     {|
     (TLet(
-        map_pair: (('a -> 'b) -> (('a*'a) -> ('b*'b))),
-        (TFun: (('a -> 'b) -> (('a*'a) -> ('b*'b))) (
+        map_pair: (('a -> 'b) -> (('a * 'a) -> ('b * 'b))),
+        (TFun: (('a -> 'b) -> (('a * 'a) -> ('b * 'b))) (
             (f: ('a -> 'b)),
-            (TFun: (('a*'a) -> ('b*'b)) (
-                ((a, b): ('a*'a)),
+            (TFun: (('a * 'a) -> ('b * 'b)) (
+                ((a, b): ('a * 'a)),
                 ((TApp: 'b (
                     (f: ('a -> 'b)),
                     (a: 'a)
                 )), (TApp: 'b (
                     (f: ('a -> 'b)),
                     (b: 'a)
-                ))) : ('b*'b)
+                ))) : ('b * 'b)
             ))
         ))
     ));
     (TLet(
-        multiply_pair_by_two: ((int*int) -> (int*int)),
-        (TApp: ((int*int) -> (int*int)) (
-            (map_pair: ((int -> int) -> ((int*int) -> (int*int)))),
+        multiply_pair_by_two: ((int * int) -> (int * int)),
+        (TApp: ((int * int) -> (int * int)) (
+            (map_pair: ((int -> int) -> ((int * int) -> (int * int)))),
             (TFun: (int -> int) (
                 (a: int),
                 (Mul: (int -> (int -> int)) (
@@ -1380,14 +1380,14 @@ let%expect_test _ =
         ))
     ));
     (TLet(
-        test_pair: (int*int),
-        ((TConst((CInt 2): int)), (TConst((CInt 2): int))) : (int*int)
+        test_pair: (int * int),
+        ((TConst((CInt 2): int)), (TConst((CInt 2): int))) : (int * int)
     ));
     (TLet(
-        test_muptiply_pair_by_two: (int*int),
-        (TApp: (int*int) (
-            (multiply_pair_by_two: ((int*int) -> (int*int))),
-            (test_pair: (int*int))
+        test_muptiply_pair_by_two: (int * int),
+        (TApp: (int * int) (
+            (multiply_pair_by_two: ((int * int) -> (int * int))),
+            (test_pair: (int * int))
         ))
     ))
 |}]

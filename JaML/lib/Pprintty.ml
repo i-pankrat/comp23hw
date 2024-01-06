@@ -54,7 +54,7 @@ let pp_ty_with_subs subs =
         ppf
         "(%a)"
         (pp_print_list
-           ~pp_sep:(fun ppf _ -> fprintf ppf "*")
+           ~pp_sep:(fun ppf _ -> fprintf ppf " * ")
            (fun ppf arg -> helper ppf arg))
         tl
   in
