@@ -10,17 +10,32 @@ type mode =
   | Brief
   | Complete
 
+let get_tpattern_subst =
+  let rec helper subs index = function
+    | TPConst (_, typ) | TPVar (_, typ) | TPWildcard typ ->
+      Pprintty.get_ty_subs subs index typ
+    | TPTuple (patterns, typ) ->
+      List.fold
+        ~init:(Pprintty.get_ty_subs subs index typ)
+        ~f:(fun (a, b) c -> helper a b c)
+        patterns
+  in
+  helper
+;;
+
 let get_texpr_subst =
   let rec helper subs index = function
     | TVar (_, typ) -> Pprintty.get_ty_subs subs index typ
-    | TLetIn (_, e1, e2, typ)
-    | TBinop (_, e1, e2, typ)
-    | TApp (e1, e2, typ)
-    | TLetRecIn (_, e1, e2, typ) ->
+    | TLetIn (pattern, e1, e2) ->
+      let subs, index = get_tpattern_subst subs index pattern in
+      let subs, index = helper subs index e1 in
+      helper subs index e2
+    | TBinop ((_, typ), e1, e2) | TApp (e1, e2, typ) | TLetRecIn ((_, typ), e1, e2) ->
       let subs, index = Pprintty.get_ty_subs subs index typ in
       let subs, index = helper subs index e1 in
       helper subs index e2
-    | TFun (_, e, typ) ->
+    | TFun (tpattern, e, typ) ->
+      let subs, index = get_tpattern_subst subs index tpattern in
       let subs, index = Pprintty.get_ty_subs subs index typ in
       helper subs index e
     | TIfThenElse (e1, e2, e3, typ) ->
@@ -41,38 +56,35 @@ let get_texpr_subst =
 
 let space ppf depth = fprintf ppf "\n%*s" (4 * depth) ""
 
-let pp_pattern ppf =
-  let open Ast in
+let pp_tpattern subs ppf =
+  let pp_ty = Pprintty.pp_ty_with_subs subs in
   let rec helper ppf = function
-    | PConst const -> Ast.pp_const ppf const
-    | PVar var -> fprintf ppf "%s" var
-    | PWildcard -> fprintf ppf "_"
-    | PTuple patterns ->
+    | TPConst (const, typ) -> fprintf ppf "%a: %a" Ast.pp_const const pp_ty typ
+    | TPVar (var, typ) -> fprintf ppf "%s: %a" var pp_ty typ
+    | TPWildcard typ -> fprintf ppf "_: %a" pp_ty typ
+    | TPTuple (patterns, typ) ->
       fprintf
         ppf
-        "(%a)"
+        "(%a): %a"
         (pp_print_list
            ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
            (fun ppf pattern -> helper ppf pattern))
         patterns
+        pp_ty
+        typ
   in
   helper ppf
-;;
-
-let pp_ppattern subs ppf =
-  let pp_ty = Pprintty.pp_ty_with_subs subs in
-  fun (pattern, typ) -> fprintf ppf "(%a: %a)" pp_pattern pattern pp_ty typ
 ;;
 
 (* A monster that needs refactoring *)
 let pp_texpr_with_subs ppf depth subs texpr =
   let pp_ty = Pprintty.pp_ty_with_subs (Some subs) in
-  let pp_ppattern = pp_ppattern (Some subs) in
+  let pp_tpattern = pp_tpattern (Some subs) in
   let rec helper depth ppf =
     let pp = helper (depth + 1) in
     function
     | TVar (name, typ) -> fprintf ppf "(%s: %a)" name pp_ty typ
-    | TBinop (op, e1, e2, typ) ->
+    | TBinop ((op, typ), e1, e2) ->
       fprintf
         ppf
         "(%s: %a (%a%a, %a%a%a))"
@@ -105,16 +117,14 @@ let pp_texpr_with_subs ppf depth subs texpr =
         e2
         space
         (depth - 1)
-    | TLetIn (pattern, e1, e2, typ) ->
+    | TLetIn (tpattern, e1, e2) ->
       fprintf
         ppf
-        "(TLetIn(%a%a: %a,%a%a,%a%a%a))"
+        "(TLetIn(%a%a,%a%a,%a%a%a))"
         space
         depth
-        pp_pattern
-        pattern
-        pp_ty
-        typ
+        pp_tpattern
+        tpattern
         space
         depth
         pp
@@ -125,7 +135,7 @@ let pp_texpr_with_subs ppf depth subs texpr =
         e2
         space
         (depth - 1)
-    | TLetRecIn (name, e1, e2, typ) ->
+    | TLetRecIn ((name, typ), e1, e2) ->
       fprintf
         ppf
         "(TLetRecIn(%a%s: %a,%a%a,%a%a%a))"
@@ -152,7 +162,7 @@ let pp_texpr_with_subs ppf depth subs texpr =
         typ
         space
         depth
-        pp_ppattern
+        pp_tpattern
         pat
         space
         depth
@@ -206,7 +216,7 @@ let show_binding = function
 ;;
 
 let pp_tbinding_complete ppf = function
-  | TLetRec (name, e, typ) as binding ->
+  | TLetRec ((name, typ), e) as binding ->
     let subs, _ = get_texpr_subst e in
     let pp_ty = Pprintty.pp_ty_with_subs (Some subs) in
     let pp_expr ppf = pp_texpr_with_subs ppf 2 subs in
@@ -223,33 +233,30 @@ let pp_tbinding_complete ppf = function
       1
       pp_expr
       e
-  | TLet (pattern, e, typ) as binding ->
+  | TLet (pattern, e) as binding ->
     let subs, _ = get_texpr_subst e in
-    let pp_ty = Pprintty.pp_ty_with_subs (Some subs) in
     let pp_expr ppf = pp_texpr_with_subs ppf 2 subs in
+    let pp_tpattern = pp_tpattern (Some subs) in
     fprintf
       ppf
-      "(%s(%a%a: %a, %a%a\n))"
+      "(%s(%a%a, %a%a\n))"
       (show_binding binding)
       space
       1
-      pp_pattern
+      pp_tpattern
       pattern
-      pp_ty
-      typ
       space
       1
       pp_expr
       e
 ;;
 
-let pp_tbinding_brief ppf = function
-  | TLetRec (name, _, typ) ->
-    let pp_ty = Pprintty.pp_ty in
-    fprintf ppf "%s: %a" name pp_ty typ
-  | TLet (pat, _, typ) ->
-    let pp_ty = Pprintty.pp_ty in
-    fprintf ppf "%a: %a" pp_pattern pat pp_ty typ
+let pp_tbinding_brief ppf =
+  let pp_ty = Pprintty.pp_ty in
+  function
+  | TLetRec ((name, typ), _) -> fprintf ppf "%s: %a" name pp_ty typ
+  | TLet (TPVar (name, typ), _) -> fprintf ppf "%s: %a" name pp_ty typ
+  | _ -> failwith "Currently not implemented"
 ;;
 
 let pp_tbinding = pp_tbinding_complete
@@ -265,13 +272,30 @@ let pp_statements sep mode =
 
 let pp_name ppf = fprintf ppf "%s"
 
+let pp_tpattern_wt =
+  let rec helper ppf = function
+    | TPConst (const, _) -> fprintf ppf "%a" Ast.pp_const const
+    | TPVar (var, _) -> fprintf ppf "%s" var
+    | TPWildcard _ -> fprintf ppf "_"
+    | TPTuple (tpatterns, _) ->
+      fprintf
+        ppf
+        "(%a)"
+        (pp_print_list
+           ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
+           (fun ppf elem -> helper ppf elem))
+        tpatterns
+  in
+  helper
+;;
+
 let pp_texpt_wt =
   let rec helper tabs ppf =
     let helper = helper tabs in
     function
     | TConst (const, _) -> Ast.pp_const ppf const
     | TVar (var_name, _) -> fprintf ppf "%s" var_name
-    | TBinop (binop, ltexpr, rtexpr, _) ->
+    | TBinop ((binop, _), ltexpr, rtexpr) ->
       fprintf ppf "(%a %a %a)" helper ltexpr Ast.pp_bin_op binop helper rtexpr
     | TApp (fun_texpr, arg_texpr, _) ->
       fprintf ppf "%a %a" helper fun_texpr helper arg_texpr
@@ -287,21 +311,21 @@ let pp_texpt_wt =
         then_texpr
         helper
         else_texpr
-    | TFun ((pattern, _), texpr, _) ->
-      fprintf ppf "fun %a -> %a" pp_pattern pattern helper texpr
-    | TLetIn (pattern, body_texpt, in_texpr, _) ->
+    | TFun (tpattern, texpr, _) ->
+      fprintf ppf "fun %a -> %a" pp_tpattern_wt tpattern helper texpr
+    | TLetIn (tpattern, body_texpt, in_texpr) ->
       fprintf
         ppf
         "%alet %a = %a in %a"
         space
         tabs
-        pp_pattern
-        pattern
+        pp_tpattern_wt
+        tpattern
         helper
         body_texpt
         helper
         in_texpr
-    | TLetRecIn (name, body_texpt, in_texpr, _) ->
+    | TLetRecIn ((name, _), body_texpt, in_texpr) ->
       fprintf
         ppf
         "%alet rec %a = %a in %a"
@@ -326,9 +350,10 @@ let pp_texpt_wt =
 ;;
 
 let pp_tbinding_wt ppf = function
-  | TLetRec (name, body, _) -> fprintf ppf "let rec %a = %a" pp_name name pp_texpt_wt body
-  | TLet (pattern, body, _) ->
-    fprintf ppf "let %a = %a" pp_pattern pattern pp_texpt_wt body
+  | TLetRec ((name, _), body) ->
+    fprintf ppf "let rec %a = %a" pp_name name pp_texpt_wt body
+  | TLet (tpattern, body) ->
+    fprintf ppf "let %a = %a" pp_tpattern_wt tpattern pp_texpt_wt body
 ;;
 
 let pp_statements_without_types =

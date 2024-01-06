@@ -512,7 +512,7 @@ let%expect_test _ =
   in
   [%expect {|
     (TFun: ('a -> 'a) (
-        (x: 'a),
+        x: 'a,
         (x: 'a)
     ))
 |}]
@@ -527,7 +527,7 @@ let%expect_test _ =
   [%expect
     {|
     (TFun: ('a -> int) (
-        (x: 'a),
+        x: 'a,
         (TConst((CInt 1): int))
     ))
 |}]
@@ -542,7 +542,7 @@ let%expect_test _ =
   [%expect
     {|
     (TFun: ('a -> bool) (
-        (x: 'a),
+        x: 'a,
         (TConst((CBool false): bool))
     ))
 |}]
@@ -621,7 +621,7 @@ let%expect_test _ =
     (TLetIn(
         id: ('a -> 'a),
         (TFun: ('a -> 'a) (
-            (x: 'a),
+            x: 'a,
             (x: 'a)
         )),
         (TApp: int (
@@ -689,7 +689,7 @@ let%expect_test _ =
     (TLet(
         result: ('a -> 'a),
         (TFun: ('a -> 'a) (
-            (x: 'a),
+            x: 'a,
             (x: 'a)
         ))
     ))
@@ -707,7 +707,7 @@ let%expect_test _ =
     (TLet(
         result: ('a -> int),
         (TFun: ('a -> int) (
-            (x: 'a),
+            x: 'a,
             (TConst((CInt 5): int))
         ))
     ))
@@ -741,13 +741,13 @@ let%expect_test _ =
     (TLet(
         sum4: (int -> (int -> (int -> (int -> int)))),
         (TFun: (int -> (int -> (int -> (int -> int)))) (
-            (x: int),
+            x: int,
             (TFun: (int -> (int -> (int -> int))) (
-                (y: int),
+                y: int,
                 (TFun: (int -> (int -> int)) (
-                    (z: int),
+                    z: int,
                     (TFun: (int -> int) (
-                        (w: int),
+                        w: int,
                         (Add: (int -> (int -> int)) (
                             (Add: (int -> (int -> int)) (
                                 (x: int),
@@ -779,9 +779,9 @@ let%expect_test _ =
     (TLet(
         apply: (('a -> 'b) -> ('a -> 'b)),
         (TFun: (('a -> 'b) -> ('a -> 'b)) (
-            (f: ('a -> 'b)),
+            f: ('a -> 'b),
             (TFun: ('a -> 'b) (
-                (a: 'a),
+                a: 'a,
                 (TApp: 'b (
                     (f: ('a -> 'b)),
                     (a: 'a)
@@ -829,17 +829,17 @@ let%expect_test _ =
     (TLet(
         apply5: (('a -> ('b -> ('c -> ('d -> ('e -> 'f))))) -> ('a -> ('b -> ('c -> ('d -> ('e -> 'f)))))),
         (TFun: (('a -> ('b -> ('c -> ('d -> ('e -> 'f))))) -> ('a -> ('b -> ('c -> ('d -> ('e -> 'f)))))) (
-            (function: ('a -> ('b -> ('c -> ('d -> ('e -> 'f)))))),
+            function: ('a -> ('b -> ('c -> ('d -> ('e -> 'f))))),
             (TFun: ('a -> ('b -> ('c -> ('d -> ('e -> 'f))))) (
-                (a: 'a),
+                a: 'a,
                 (TFun: ('b -> ('c -> ('d -> ('e -> 'f)))) (
-                    (b: 'b),
+                    b: 'b,
                     (TFun: ('c -> ('d -> ('e -> 'f))) (
-                        (c: 'c),
+                        c: 'c,
                         (TFun: ('d -> ('e -> 'f)) (
-                            (d: 'd),
+                            d: 'd,
                             (TFun: ('e -> 'f) (
-                                (e: 'e),
+                                e: 'e,
                                 (TApp: 'f (
                                     (TApp: ('e -> 'f) (
                                         (TApp: ('d -> ('e -> 'f)) (
@@ -895,11 +895,11 @@ let%expect_test _ =
     (TLet(
         sumn: (int -> int),
         (TFun: (int -> int) (
-            (x: int),
+            x: int,
             (TLetRecIn(
                 helper: (int -> int),
                 (TFun: (int -> int) (
-                    (x: int),
+                    x: int,
                     (TIfThenElse: int
                         ((Eq: (int -> (int -> bool)) (
                             (x: int),
@@ -952,7 +952,7 @@ let%expect_test _ =
     (TLetRec(
         fact: (int -> int),
         (TFun: (int -> int) (
-            (n: int),
+            n: int,
             (TIfThenElse: int
                 ((Eq: (int -> (int -> bool)) (
                     (n: int),
@@ -1010,13 +1010,13 @@ let%expect_test _ =
     (TLet(
         fac: (int -> int),
         (TFun: (int -> int) (
-            (n: int),
+            n: int,
             (TLetRecIn(
                 fact: (int -> (int -> int)),
                 (TFun: (int -> (int -> int)) (
-                    (n: int),
+                    n: int,
                     (TFun: (int -> int) (
-                        (acc: int),
+                        acc: int,
                         (TIfThenElse: int
                             ((Lt: (int -> (int -> bool)) (
                                 (n: int),
@@ -1065,7 +1065,7 @@ let%expect_test _ =
     (TLetRec(
         fix: (('a -> 'a) -> 'a),
         (TFun: (('a -> 'a) -> 'a) (
-            (f: ('a -> 'a)),
+            f: ('a -> 'a),
             (TApp: 'a (
                 (f: ('a -> 'a)),
                 (TApp: 'a (
@@ -1098,9 +1098,9 @@ let%expect_test _ =
     (TLetRec(
         fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)),
         (TFun: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)) (
-            (f: (('a -> 'b) -> ('a -> 'b))),
+            f: (('a -> 'b) -> ('a -> 'b)),
             (TFun: ('a -> 'b) (
-                (eta: 'a),
+                eta: 'a,
                 (TApp: 'b (
                     (TApp: ('a -> 'b) (
                         (f: (('a -> 'b) -> ('a -> 'b))),
@@ -1146,7 +1146,7 @@ let%expect_test _ =
     (TLet(
         fst: (('a * 'b) -> 'a),
         (TFun: (('a * 'b) -> 'a) (
-            ((a, _): ('a * 'b)),
+            (_: 'b, a: 'a): ('a * 'b),
             (a: 'a)
         ))
     ))
@@ -1164,7 +1164,7 @@ let%expect_test _ =
     (TLet(
         snd: (('a * 'b) -> 'b),
         (TFun: (('a * 'b) -> 'b) (
-            ((_, b): ('a * 'b)),
+            (b: 'b, _: 'a): ('a * 'b),
             (b: 'b)
         ))
     ))
@@ -1187,7 +1187,7 @@ let%expect_test _ =
     (TLet(
         pair_sum: ((int * int) -> int),
         (TFun: ((int * int) -> int) (
-            ((a, b): (int * int)),
+            (b: int, a: int): (int * int),
             (Add: (int -> (int -> int)) (
                 (a: int),
                 (b: int)
@@ -1219,9 +1219,9 @@ let%expect_test _ =
     (TLet(
         pair_sum: ((int * int) -> int),
         (TFun: ((int * int) -> int) (
-            (pair: (int * int)),
+            pair: (int * int),
             (TLetIn(
-                (f, s): (int * int),
+                (s: int, f: int): (int * int),
                 (pair: (int * int)),
                 (Add: (int -> (int -> int)) (
                     (f: int),
@@ -1244,7 +1244,7 @@ let%expect_test _ =
     (TLet(
         constant: ('a -> int),
         (TFun: ('a -> int) (
-            (_: 'a),
+            _: 'a,
             (TConst((CInt 5): int))
         ))
     ))
@@ -1286,14 +1286,14 @@ let%expect_test _ =
     (TLet(
         sum_of_two_pair: ((int * int) -> ((int * int) -> (int * int))),
         (TFun: ((int * int) -> ((int * int) -> (int * int))) (
-            (one: (int * int)),
+            one: (int * int),
             (TFun: ((int * int) -> (int * int)) (
-                (two: (int * int)),
+                two: (int * int),
                 (TLetIn(
-                    (f1, s1): (int * int),
+                    (s1: int, f1: int): (int * int),
                     (one: (int * int)),
                     (TLetIn(
-                        (f2, s2): (int * int),
+                        (s2: int, f2: int): (int * int),
                         (two: (int * int)),
                         ((Add: (int -> (int -> int)) (
                             (f1: int),
@@ -1353,9 +1353,9 @@ let%expect_test _ =
     (TLet(
         map_pair: (('a -> 'b) -> (('a * 'a) -> ('b * 'b))),
         (TFun: (('a -> 'b) -> (('a * 'a) -> ('b * 'b))) (
-            (f: ('a -> 'b)),
+            f: ('a -> 'b),
             (TFun: (('a * 'a) -> ('b * 'b)) (
-                ((a, b): ('a * 'a)),
+                (b: 'a, a: 'a): ('a * 'a),
                 ((TApp: 'b (
                     (f: ('a -> 'b)),
                     (a: 'a)
@@ -1371,7 +1371,7 @@ let%expect_test _ =
         (TApp: ((int * int) -> (int * int)) (
             (map_pair: ((int -> int) -> ((int * int) -> (int * int)))),
             (TFun: (int -> int) (
-                (a: int),
+                a: int,
                 (Mul: (int -> (int -> int)) (
                     (a: int),
                     (TConst((CInt 2): int))
