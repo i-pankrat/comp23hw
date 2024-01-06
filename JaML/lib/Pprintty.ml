@@ -50,10 +50,12 @@ let pp_ty_with_subs subs =
     | Prim s -> pp_print_string ppf @@ show_prim s
     | Arrow (l, r) -> fprintf ppf "(%a -> %a)" helper l helper r
     | Tuple tl ->
-      pp_print_list
-        ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
-        (fun ppf arg -> helper ppf arg)
+      fprintf
         ppf
+        "(%a)"
+        (pp_print_list
+           ~pp_sep:(fun ppf _ -> fprintf ppf "*")
+           (fun ppf arg -> helper ppf arg))
         tl
   in
   helper
