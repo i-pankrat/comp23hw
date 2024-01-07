@@ -55,21 +55,12 @@ let rec free_variables texpr =
   | TTuple (e, _) ->
     List.fold ~f:(fun x e -> union x (free_variables e)) ~init:NameS.empty e
   | TFun (pattern, expr, _) ->
-    let fv_expr = free_variables expr in
-    let rec helper_fv = function
-      | TPVar (x, ty) -> remove (x, ty) fv_expr
-      | TPTuple (texpr, _) ->
-        List.fold
-          ~f:(fun fv e ->
-            match e with
-            | TPVar (v, ty) -> remove (v, ty) fv
-            | TPTuple (_, _) as tuple -> helper_fv tuple
-            | _ -> fv)
-          ~init:fv_expr
-          texpr
-      | _ -> fv_expr
+    let rec helper_fv env = function
+      | TPVar (x, ty) -> remove (x, ty) env
+      | TPTuple (texpr, _) -> List.fold ~f:(fun fe e -> helper_fv fe e) ~init:env texpr
+      | _ -> env
     in
-    helper_fv pattern
+    helper_fv (free_variables expr) pattern
   | TApp (e1, e2, _) ->
     let fv_e1 = free_variables e1 in
     let fv_e2 = free_variables e2 in
@@ -151,7 +142,7 @@ and closure_expr env known expr =
   | TVar (x, ty) as tvar ->
     let expr, _ =
       match find x env with
-      | diff, ty1, _ -> put_diff_app (List.rev @@ diff) (tvar, ty1)
+      | diff, ty1, _ -> put_diff_app (List.rev diff) (tvar, ty1)
       | (exception Stdlib.Not_found) | (exception Not_found_s _) -> tvar, ty
     in
     expr, known, env
@@ -160,7 +151,7 @@ and closure_expr env known expr =
       List.fold_right
         ~f:(fun texpr (exprlst, tylst, known, env) ->
           let expr, known, env = closure_expr env known texpr in
-          expr :: exprlst, (get_ty @@ expr) :: tylst, known, env)
+          expr :: exprlst, get_ty expr :: tylst, known, env)
         ~init:([], [], known, env)
         x
     in
