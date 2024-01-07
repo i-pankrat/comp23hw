@@ -13,8 +13,8 @@
   ; Pprintanf
   ; Lambdalift
   ; Alpha
-  ; Closure
-  ; Counter
+  Closure
+  Counter
   ; Toplevel
   ; Anf
   ; Anfconv
