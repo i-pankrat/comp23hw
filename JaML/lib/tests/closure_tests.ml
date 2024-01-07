@@ -72,7 +72,7 @@ let%expect_test _ =
      let fac n =
      let rec fack n k =
      if n <= 1 then k 1
-     else fack (n-1) ((fun k n m -> k (m * n)) k n)
+     else fack (n-1) ((fun k n m -> k (m * n)) k n) 
      in
      fack n (fun x -> x)
   |}
@@ -86,6 +86,32 @@ let%expect_test _ =
         let #closure_fun3 = fun x -> x in
         let rec fack = fun n -> fun k ->
         if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in fack n #closure_fun3
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let fibo n =
+        let rec fibo_cps n acc =
+        if n < 3
+        then acc 1
+        else fibo_cps (n - 1) (fun x -> fibo_cps (n - 2) (fun y -> acc (x + y)))
+        in
+        fibo_cps n (fun x -> x)
+  |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let fibo = fun n ->
+        let #closure_fun4 = fun x -> fun acc -> fun y -> acc (x + y) in
+        let #closure_fun5 = fun n -> fun fibo_cps -> fun acc -> fun x -> fibo_cps (n - 2) #closure_fun4 acc x in
+        let #closure_fun6 = fun x -> x in
+        let rec fibo_cps = fun n -> fun acc ->
+        if (n < 3) then acc 1 else fibo_cps (n - 1) #closure_fun5 acc fibo_cps n in fibo_cps n #closure_fun6
  |}]
 ;;
 
@@ -110,237 +136,61 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  (* Input:
-     let fibo n =
-     let rec fibo_cps n acc =
-     if n < 3
-     then acc 1
-     else fibo_cps (n - 1) (fun x -> fibo_cps (n - 2) (fun y -> acc (x + y)))
-     in
-     fibo_cps n (fun x -> x)
-
-     Output:
-     let fibo n =
-     let #closure_fun4 x acc y = acc (x + y) in
-     let #closure_fun5 n fibo_cps acc x = fibo_cps (n - 2) (#closure_fun4 x acc) in
-     let #closure_fun6 x = x in
-     let rec fibo_cps n acc =
-     if n < 3
-     then acc 1
-     else fibo_cps (n - 1) #closure_fun5 n fibo_cps acc
-     in
-     fibo_cps n #closure_fun6
-  *)
   let _ =
-    let e =
-      [ TLet
-          ( "fibo"
-          , TFun
-              ( Arg ("n", Prim Int)
-              , TLetRecIn
-                  ( "fibo_cps"
-                  , TFun
-                      ( Arg ("n", Prim Int)
-                      , TFun
-                          ( Arg ("acc", Arrow (Prim Int, Prim Int))
-                          , TIfThenElse
-                              ( TBinop
-                                  ( Lt
-                                  , TVar ("n", Prim Int)
-                                  , TConst (CInt 3, Prim Int)
-                                  , Arrow (Prim Int, Arrow (Prim Int, Prim Bool)) )
-                              , TApp
-                                  ( TVar ("acc", Arrow (Prim Int, Prim Int))
-                                  , TConst (CInt 1, Prim Int)
-                                  , Prim Int )
-                              , TApp
-                                  ( TApp
-                                      ( TVar
-                                          ( "fibo_cps"
-                                          , Arrow
-                                              ( Prim Int
-                                              , Arrow
-                                                  (Arrow (Prim Int, Prim Int), Prim Int)
-                                              ) )
-                                      , TBinop
-                                          ( Sub
-                                          , TVar ("n", Prim Int)
-                                          , TConst (CInt 1, Prim Int)
-                                          , Arrow (Prim Int, Arrow (Prim Int, Prim Int))
-                                          )
-                                      , Arrow (Arrow (Prim Int, Prim Int), Prim Int) )
-                                  , TFun
-                                      ( Arg ("x", Prim Int)
-                                      , TApp
-                                          ( TApp
-                                              ( TVar
-                                                  ( "fibo_cps"
-                                                  , Arrow
-                                                      ( Prim Int
-                                                      , Arrow
-                                                          ( Arrow (Prim Int, Prim Int)
-                                                          , Prim Int ) ) )
-                                              , TBinop
-                                                  ( Sub
-                                                  , TVar ("n", Prim Int)
-                                                  , TConst (CInt 2, Prim Int)
-                                                  , Arrow
-                                                      ( Prim Int
-                                                      , Arrow (Prim Int, Prim Int) ) )
-                                              , Arrow
-                                                  (Arrow (Prim Int, Prim Int), Prim Int)
-                                              )
-                                          , TFun
-                                              ( Arg ("y", Prim Int)
-                                              , TApp
-                                                  ( TVar
-                                                      ("acc", Arrow (Prim Int, Prim Int))
-                                                  , TBinop
-                                                      ( Add
-                                                      , TVar ("x", Prim Int)
-                                                      , TVar ("y", Prim Int)
-                                                      , Arrow
-                                                          ( Prim Int
-                                                          , Arrow (Prim Int, Prim Int) )
-                                                      )
-                                                  , Prim Int )
-                                              , Arrow (Prim Int, Prim Int) )
-                                          , Prim Int )
-                                      , Arrow (Prim Int, Prim Int) )
-                                  , Prim Int )
-                              , Prim Int )
-                          , Arrow (Arrow (Prim Int, Prim Int), Prim Int) )
-                      , Arrow (Prim Int, Arrow (Arrow (Prim Int, Prim Int), Prim Int)) )
-                  , TApp
-                      ( TApp
-                          ( TVar
-                              ( "fibo_cps"
-                              , Arrow
-                                  (Prim Int, Arrow (Arrow (Prim Int, Prim Int), Prim Int))
-                              )
-                          , TVar ("n", Prim Int)
-                          , Arrow (Arrow (Prim Int, Prim Int), Prim Int) )
-                      , TFun
-                          ( Arg ("x", Prim Int)
-                          , TVar ("x", Prim Int)
-                          , Arrow (Prim Int, Prim Int) )
-                      , Prim Int )
-                  , Arrow (Prim Int, Arrow (Arrow (Prim Int, Prim Int), Prim Int)) )
-              , Arrow (Prim Int, Prim Int) )
-          , Arrow (Prim Int, Prim Int) )
-      ]
+    let test =
+      {|
+      let x c (a,b) =
+        let sum (c, d) = (a + b, c + d) in  
+        sum (c, 1)
+        |}
     in
-    Closure.closure e |> pp_with_type_statements
+    run_closure_test test
   in
   [%expect
     {|
-    (TLet(
-        fibo: (int -> int),
-        (TFun: (int -> int) (
-            (n: int),
-            (TLetIn(
-                #closure_fun4: (int -> ((int -> int) -> (int -> int))),
-                (TFun: (int -> ((int -> int) -> (int -> int))) (
-                    (x: int),
-                    (TFun: ((int -> int) -> (int -> int)) (
-                        (acc: (int -> int)),
-                        (TFun: (int -> int) (
-                            (y: int),
-                            (TApp: (int -> int) (
-                                (acc: (int -> int)),
-                                (Add: (int -> (int -> int)) (
-                                    (x: int),
-                                    (y: int)
-                                ))
-                            ))
-                        ))
-                    ))
-                )),
-                (TLetIn(
-                    #closure_fun5: (int -> ((int -> ((int -> int) -> int)) -> ((int -> int) -> (int -> int)))),
-                    (TFun: (int -> ((int -> ((int -> int) -> int)) -> ((int -> int) -> (int -> int)))) (
-                        (n: int),
-                        (TFun: ((int -> ((int -> int) -> int)) -> ((int -> int) -> (int -> int))) (
-                            (fibo_cps: (int -> ((int -> int) -> int))),
-                            (TFun: ((int -> int) -> (int -> int)) (
-                                (acc: (int -> int)),
-                                (TFun: (int -> int) (
-                                    (x: int),
-                                    (TApp: int (
-                                        (TApp: (int -> ((int -> int) -> int)) (
-                                            (fibo_cps: (int -> ((int -> int) -> int))),
-                                            (Sub: (int -> (int -> int)) (
-                                                (n: int),
-                                                (TConst((CInt 2): int))
-                                            ))
-                                        )),
-                                        (TApp: (int -> ((int -> int) -> (int -> int))) (
-                                            (TApp: ((int -> int) -> (int -> int)) (
-                                                (#closure_fun4: (int -> ((int -> int) -> (int -> int)))),
-                                                (acc: (int -> int))
-                                            )),
-                                            (x: int)
-                                        ))
-                                    ))
-                                ))
-                            ))
-                        ))
-                    )),
-                    (TLetIn(
-                        #closure_fun6: (int -> int),
-                        (TFun: (int -> int) (
-                            (x: int),
-                            (x: int)
-                        )),
-                        (TLetRecIn(
-                            fibo_cps: (int -> ((int -> int) -> int)),
-                            (TFun: (int -> ((int -> int) -> int)) (
-                                (n: int),
-                                (TFun: ((int -> int) -> int) (
-                                    (acc: (int -> int)),
-                                    (TIfThenElse: int
-                                        ((Lt: (int -> (int -> bool)) (
-                                            (n: int),
-                                            (TConst((CInt 3): int))
-                                        )),
-                                        (TApp: (int -> int) (
-                                            (acc: (int -> int)),
-                                            (TConst((CInt 1): int))
-                                        )),
-                                        (TApp: int (
-                                            (TApp: (int -> ((int -> int) -> int)) (
-                                                (fibo_cps: (int -> ((int -> int) -> int))),
-                                                (Sub: (int -> (int -> int)) (
-                                                    (n: int),
-                                                    (TConst((CInt 1): int))
-                                                ))
-                                            )),
-                                            (TApp: (int -> ((int -> ((int -> int) -> int)) -> ((int -> int) -> (int -> int)))) (
-                                                (TApp: ((int -> ((int -> int) -> int)) -> ((int -> int) -> (int -> int))) (
-                                                    (TApp: ((int -> int) -> (int -> int)) (
-                                                        (#closure_fun5: (int -> ((int -> ((int -> int) -> int)) -> ((int -> int) -> (int -> int))))),
-                                                        (acc: (int -> int))
-                                                    )),
-                                                    (fibo_cps: (int -> ((int -> int) -> int)))
-                                                )),
-                                                (n: int)
-                                            ))
-                                        ))
-                                    ))
-                                ))
-                            )),
-                            (TApp: int (
-                                (TApp: (int -> ((int -> int) -> int)) (
-                                    (fibo_cps: (int -> ((int -> int) -> int))),
-                                    (n: int)
-                                )),
-                                (#closure_fun6: (int -> int))
-                            ))
-                        ))
-                    ))
-                ))
-            ))
-        ))
-    ))
+    let x = fun c -> fun (a, b) ->
+        let sum = fun b -> fun a -> fun (c, d) -> ((a + b), (c + d)) in sum b a (c, 1)
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let x (a,b,c,d) = 
+        let f a b = (a + b, if c < 1 then c else d) in
+        f a b
+        |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let x = fun (a, b, c, d) ->
+        let f = fun d -> fun c -> fun a -> fun b -> ((a + b),
+        if (c < 1) then c else d) in f d c a b
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let f x = 
+        let sum a = (fun (k, j) a -> (k + j) * a) x a in
+        let fst (a, _) = a in
+        let scd (_, b) = b in
+        (sum (fst x), sum (scd x))
+        |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let f = fun x ->
+        let #closure_fun7 = fun (k, j) -> fun a -> ((k + j) * a) in
+        let sum = fun x -> fun a -> #closure_fun7 x a in
+        let fst = fun (a, _) -> a in
+        let scd = fun (_, b) -> b in (sum x fst x, sum x scd x)
  |}]
 ;;
