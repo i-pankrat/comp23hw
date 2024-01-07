@@ -18,7 +18,7 @@ let get_tpattern_subst =
       List.fold
         ~init:(Pprintty.get_ty_subs subs index typ)
         ~f:(fun (a, b) c -> helper a b c)
-        patterns
+        (List.rev patterns)
   in
   helper
 ;;
@@ -69,7 +69,7 @@ let pp_tpattern subs ppf =
         (pp_print_list
            ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
            (fun ppf pattern -> helper ppf pattern))
-        patterns
+        (List.rev patterns)
         pp_ty
         typ
   in
@@ -284,7 +284,7 @@ let pp_tpattern_wt =
         (pp_print_list
            ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
            (fun ppf elem -> helper ppf elem))
-        tpatterns
+        (List.rev tpatterns)
   in
   helper
 ;;

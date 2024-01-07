@@ -1146,7 +1146,7 @@ let%expect_test _ =
     (TLet(
         fst: (('a * 'b) -> 'a),
         (TFun: (('a * 'b) -> 'a) (
-            (_: 'b, a: 'a): ('a * 'b),
+            (a: 'a, _: 'b): ('a * 'b),
             (a: 'a)
         ))
     ))
@@ -1164,7 +1164,7 @@ let%expect_test _ =
     (TLet(
         snd: (('a * 'b) -> 'b),
         (TFun: (('a * 'b) -> 'b) (
-            (b: 'b, _: 'a): ('a * 'b),
+            (_: 'a, b: 'b): ('a * 'b),
             (b: 'b)
         ))
     ))
@@ -1187,7 +1187,7 @@ let%expect_test _ =
     (TLet(
         pair_sum: ((int * int) -> int),
         (TFun: ((int * int) -> int) (
-            (b: int, a: int): (int * int),
+            (a: int, b: int): (int * int),
             (Add: (int -> (int -> int)) (
                 (a: int),
                 (b: int)
@@ -1221,7 +1221,7 @@ let%expect_test _ =
         (TFun: ((int * int) -> int) (
             pair: (int * int),
             (TLetIn(
-                (s: int, f: int): (int * int),
+                (f: int, s: int): (int * int),
                 (pair: (int * int)),
                 (Add: (int -> (int -> int)) (
                     (f: int),
@@ -1290,10 +1290,10 @@ let%expect_test _ =
             (TFun: ((int * int) -> (int * int)) (
                 two: (int * int),
                 (TLetIn(
-                    (s1: int, f1: int): (int * int),
+                    (f1: int, s1: int): (int * int),
                     (one: (int * int)),
                     (TLetIn(
-                        (s2: int, f2: int): (int * int),
+                        (f2: int, s2: int): (int * int),
                         (two: (int * int)),
                         ((Add: (int -> (int -> int)) (
                             (f1: int),
@@ -1355,7 +1355,7 @@ let%expect_test _ =
         (TFun: (('a -> 'b) -> (('a * 'a) -> ('b * 'b))) (
             f: ('a -> 'b),
             (TFun: (('a * 'a) -> ('b * 'b)) (
-                (b: 'a, a: 'a): ('a * 'a),
+                (a: 'a, b: 'a): ('a * 'a),
                 ((TApp: 'b (
                     (f: ('a -> 'b)),
                     (a: 'a)
