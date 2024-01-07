@@ -54,9 +54,7 @@ let%expect_test _ =
      let fac n =
      let rec fack n k =
      if n <= 1 then k 1
-     else fack (n-1) ((fun k n m -> k (m * n)) k n) in
-     let x z = 1 in
-     let f k = 2 
+     else fack (n-1) ((fun k n m -> k (m * n)) k n) 
      in
      fack n (fun x -> x)
   |}
@@ -69,9 +67,32 @@ let%expect_test _ =
         let #closure_fun2 = fun k -> fun n -> fun m -> k (m * n) in
         let #closure_fun3 = fun x -> x in
         let rec fack = fun n -> fun k ->
-        if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in
-        let x = fun z -> 1 in
-        let f = fun k -> 2 in fack n #closure_fun3
+        if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in fack n #closure_fun3
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let fibo n =
+        let rec fibo_cps n acc =
+        if n < 3
+        then acc 1
+        else fibo_cps (n - 1) (fun x -> fibo_cps (n - 2) (fun y -> acc (x + y)))
+        in
+        fibo_cps n (fun x -> x)
+  |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let fac = fun n ->
+        let #closure_fun2 = fun k -> fun n -> fun m -> k (m * n) in
+        let #closure_fun3 = fun x -> x in
+        let rec fack = fun n -> fun k ->
+        if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in fack n #closure_fun3
  |}]
 ;;
 
