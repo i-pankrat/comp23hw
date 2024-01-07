@@ -54,7 +54,9 @@ let%expect_test _ =
      let fac n =
      let rec fack n k =
      if n <= 1 then k 1
-     else fack (n-1) ((fun k n m -> k (m * n)) k n)
+     else fack (n-1) ((fun k n m -> k (m * n)) k n) in
+     let x z = 1 in
+     let f k = 2 
      in
      fack n (fun x -> x)
   |}
@@ -67,7 +69,9 @@ let%expect_test _ =
         let #closure_fun2 = fun k -> fun n -> fun m -> k (m * n) in
         let #closure_fun3 = fun x -> x in
         let rec fack = fun n -> fun k ->
-        if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in fack n #closure_fun3
+        if (n <= 1) then k 1 else fack (n - 1) #closure_fun2 k n in
+        let x = fun z -> 1 in
+        let f = fun k -> 2 in fack n #closure_fun3
  |}]
 ;;
 
@@ -88,5 +92,65 @@ let%expect_test _ =
     let sum = fun x ->
         let new_x = (x + 1) in
         let new_sum = (new_x + 1) in new_sum
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let x c (a,b) =
+        let sum (c, d) = (a + b, c + d) in  
+        sum (c, 1)
+        |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let x = fun c -> fun (a, b) ->
+        let sum = fun b -> fun a -> fun (c, d) -> ((a + b), (c + d)) in sum b a (c, 1)
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let x (a,b,c,d) = 
+        let f a b = (a + b, if c < 1 then c else d) in
+        f a b
+        |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let x = fun (a, b, c, d) ->
+        let f = fun d -> fun c -> fun a -> fun b -> ((a + b),
+        if (c < 1) then c else d) in f d c a b
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let test =
+      {|
+      let f x = 
+        let sum a = (fun (k, j) a -> (k + j) * a) x a in
+        let fst (a, _) = a in
+        let scd (_, b) = b in
+        (sum (fst x), sum (scd x))
+        |}
+    in
+    run_closure_test test
+  in
+  [%expect
+    {|
+    let f = fun x ->
+        let #closure_fun4 = fun (k, j) -> fun a -> ((k + j) * a) in
+        let sum = fun x -> fun a -> #closure_fun4 x a in
+        let fst = fun (a, _) -> a in
+        let scd = fun (_, b) -> b in (sum x fst x, sum x scd x)
  |}]
 ;;
