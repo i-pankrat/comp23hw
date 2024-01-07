@@ -142,7 +142,7 @@ and closure_expr env known expr =
   | TVar (x, ty) as tvar ->
     let expr, _ =
       match find x env with
-      | diff, ty1, _ -> put_diff_app (List.rev @@ diff) (tvar, ty1)
+      | diff, ty1, _ -> put_diff_app (List.rev diff) (tvar, ty1)
       | (exception Stdlib.Not_found) | (exception Not_found_s _) -> tvar, ty
     in
     expr, known, env
@@ -151,7 +151,7 @@ and closure_expr env known expr =
       List.fold_right
         ~f:(fun texpr (exprlst, tylst, known, env) ->
           let expr, known, env = closure_expr env known texpr in
-          expr :: exprlst, (get_ty @@ expr) :: tylst, known, env)
+          expr :: exprlst, get_ty expr :: tylst, known, env)
         ~init:([], [], known, env)
         x
     in
