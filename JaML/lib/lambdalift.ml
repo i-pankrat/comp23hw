@@ -98,8 +98,7 @@ let rec lambda_lift_expr env = function
               in
               new_expr, counter + 1
             | TPTuple (pat_lst, _) -> dispose_of_patten pat_lst expr_with_hole counter
-            | TPConst _ -> expr_with_hole, counter + 1
-            | TPWildcard _ -> expr_with_hole, counter + 1)
+            | TPConst _ | TPWildcard _ -> expr_with_hole, counter + 1)
           ~init:(expr_with_hole, counter)
           pat_lst
       in
@@ -136,8 +135,7 @@ let lambda_lift_bindings env = function
               in
               env, counter + 1
             | TPTuple (pat_lst, _) -> dispose_of_patten pat_lst env counter
-            | TPConst _ -> env, counter + 1
-            | TPWildcard _ -> env, counter + 1)
+            | TPConst _ | TPWildcard _ -> env, counter + 1)
           ~init:(env, counter)
           pat_lst
       in
