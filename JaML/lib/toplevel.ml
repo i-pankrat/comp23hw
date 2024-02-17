@@ -16,7 +16,7 @@ type typed_binop = bin_op * ty (** Typed sign of a binary operation *)
 type llexpr =
   | LConst of const * ty (** Typed expression for the constant *)
   | LVar of string * ty (** Typed expression for the variables *)
-  | LTuple of llexpr list * ty (** Typed expreddion for the tuples *)
+  | LTuple of llexpr list * ty (** Typed expression for the tuples *)
   | LBinop of typed_binop * llexpr * llexpr 
   (** Typed expression for the binary operations *)
   | LApp of llexpr * llexpr * ty
