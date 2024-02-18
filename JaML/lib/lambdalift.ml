@@ -84,7 +84,7 @@ let rec lambda_lift_expr env = function
   | TLetIn (TPTuple (pat_lst, ty), e1, e2) ->
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
-    let new_id = genid "#cortege_out" in
+    let new_id = genid "#tuple_out" in
     let expr_with_hole, _ =
       let expr_with_hole e2 = LLetIn ((new_id, ty), e1, e2) in
       let rec dispose_of_patten pat_lst expr_with_hole counter =
@@ -116,49 +116,44 @@ let lambda_lift_bindings env = function
   | TLet (TPVar (id, ty), expr) ->
     let args = List.rev @@ get_args_let [] expr in
     let expr, env = lambda_lift_expr env expr in
-    LLet ((id, ty), args, expr), env
+    LLet ((id, ty), args, expr), env, []
   | TLet (TPTuple (pat_lst, ty), expr) ->
     let args = List.rev @@ get_args_let [] expr in
     let expr, env = lambda_lift_expr env expr in
-    let new_id = genid "#cortege_out" in
-    let env, _ =
-      let rec dispose_of_patten pat_lst env counter =
-        List.fold_left
-          ~f:(fun (env, counter) pat ->
+    let new_id = genid "#tuple_out" in
+    let lst, _ =
+      let rec dispose_of_patten pat_lst lst counter =
+        List.fold_right
+          ~f:(fun pat (env, counter) ->
             match pat with
             | TPVar (id, typ) ->
-              let env =
-                extend_env
-                  env
-                  id
-                  (LLet ((id, typ), [], LTake (LVar (new_id, ty), counter)))
-              in
+              let env = LLet ((id, typ), [], LTake (LVar (new_id, ty), counter)) :: env in
               env, counter + 1
             | TPTuple (pat_lst, _) -> dispose_of_patten pat_lst env counter
             | TPConst _ | TPWildcard _ -> env, counter + 1)
-          ~init:(env, counter)
+          ~init:(lst, counter)
           pat_lst
       in
-      dispose_of_patten pat_lst env 0
+      dispose_of_patten pat_lst [] 0
     in
-    LLet ((new_id, ty), args, expr), env
+    LLet ((new_id, ty), args, expr), env, lst
   | TLet (TPConst (_, ty), expr) | TLet (TPWildcard ty, expr) ->
     let expr, env = lambda_lift_expr env expr in
     let new_id = genid "#wildcard" in
-    LLet ((new_id, ty), [], expr), env
+    LLet ((new_id, ty), [], expr), env, []
   | TLetRec ((id, ty), expr) ->
     let args = List.rev @@ get_args_let [] expr in
     let expr, env = lambda_lift_expr env expr in
-    LLetRec ((id, ty), args, expr), env
+    LLetRec ((id, ty), args, expr), env, []
 ;;
 
 let lambda_lift expr =
   let empty = EnvM.empty in
   let stms =
     List.fold expr ~init:[] ~f:(fun stms el ->
-      let stmt, env = lambda_lift_bindings empty el in
+      let stmt, env, lst = lambda_lift_bindings empty el in
       let mapped_env = List.map ~f:(fun (_, expr) -> expr) (EnvM.to_alist env) in
-      (stmt :: List.rev mapped_env) @ stms)
+      (lst @ (stmt :: List.rev mapped_env)) @ stms)
   in
   List.rev stms
 ;;

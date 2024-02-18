@@ -107,7 +107,11 @@ let%expect_test _ =
   |} in
     run_lambda_test e
   in
-  [%expect {|
+  [%expect
+    {|
+    let #tuple_out1  = (1, 2);
+    let a  = take(#tuple_out1, 0);
+    let b  = take(#tuple_out1, 1)
  |}]
 ;;
 
@@ -118,7 +122,23 @@ let%expect_test _ =
   |} in
     run_lambda_test e
   in
-  [%expect {|
+  [%expect {| let #tuple_out2  = (1, 2) |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let make_tuple a b = (a, b)
+     let (f, s) = make_tuple 1 2
+  |} in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let #tuple_out3  = make_tuple 1 2;
+    let f  = take(#tuple_out3, 0);
+    let s  = take(#tuple_out3, 1)
  |}]
 ;;
 
@@ -130,30 +150,66 @@ let%expect_test _ =
   |} in
     run_lambda_test e
   in
-  [%expect {|
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let #tuple_out4  = make_tuple 1 2;
+    let f  = take(#tuple_out4, 0);
+    let s  = take(#tuple_out4, 1)
  |}]
 ;;
 
 let%expect_test _ =
   let _ =
-    let e = {|
+    let e =
+      {|
      let make_tuple a b = (a, b)
-     let (f, s) = make_tuple 1 2
-  |} in
+     let (f, (s, x)) = make_tuple 1 (2, 3) 
+     |}
+    in
     run_lambda_test e
   in
-  [%expect {|
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let #tuple_out5  = make_tuple 1 (2, 3);
+    let f  = take(#tuple_out5, 0);
+    let s  = take(#tuple_out5, 1);
+    let x  = take(#tuple_out5, 2)
  |}]
 ;;
 
 let%expect_test _ =
   let _ =
-    let e = {|
-     let make_tuple a b = (a, b)
-     let (f, s) = make_tuple 1 2
-  |} in
+    let e =
+      {|
+    let make_tuple a b = (a, b)
+    let x =
+      let (f, s) = make_tuple 1 2 in
+      (f, s) 
+      |}
+    in
     run_lambda_test e
   in
-  [%expect {|
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let x  =
+        let #tuple_out6 = make_tuple 1 2 in
+        let f = take(#tuple_out6, 0) in
+        let s = take(#tuple_out6, 1) in (f, s)
  |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+    let x (f, s, y) k (s, (m, d), u) l = ((f + s + y) / k) * ((s + m + d + u) / l)
+      |}
+    in
+    run_lambda_test e
+  in
+  [%expect
+    {| let x f s y k s m d u l = ((((f + s) + y) / k) * ((((s + m) + d) + u) / l)) |}]
 ;;
