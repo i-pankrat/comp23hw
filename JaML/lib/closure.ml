@@ -230,6 +230,7 @@ let closure_bindings = function
 ;;
 
 let closure expr =
+  reset 0;
   let stms =
     List.fold expr ~init:[] ~f:(fun stms el ->
       let stmt = closure_bindings el in

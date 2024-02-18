@@ -148,6 +148,7 @@ let lambda_lift_bindings env = function
 ;;
 
 let lambda_lift expr =
+  reset 0;
   let empty = EnvM.empty in
   let stms =
     List.fold expr ~init:[] ~f:(fun stms el ->
