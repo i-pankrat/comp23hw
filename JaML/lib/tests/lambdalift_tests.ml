@@ -97,3 +97,63 @@ let%expect_test _ =
         let new_sum = (new_x + 1) in new_sum
  |}]
 ;;
+
+(** Tests for tuples *)
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let (a, b) = (1, 2)
+  |} in
+    run_lambda_test e
+  in
+  [%expect {|
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let (_, _) = (1, 2)
+  |} in
+    run_lambda_test e
+  in
+  [%expect {|
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let make_tuple a b = (a, b)
+     let (f, s) = make_tuple 1 2
+  |} in
+    run_lambda_test e
+  in
+  [%expect {|
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let make_tuple a b = (a, b)
+     let (f, s) = make_tuple 1 2
+  |} in
+    run_lambda_test e
+  in
+  [%expect {|
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let make_tuple a b = (a, b)
+     let (f, s) = make_tuple 1 2
+  |} in
+    run_lambda_test e
+  in
+  [%expect {|
+ |}]
+;;
