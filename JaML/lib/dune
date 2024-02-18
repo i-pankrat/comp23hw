@@ -9,7 +9,7 @@
   Inferencer
   Pprintty
   Pprinttypedtree
-  ; Pprinttopleveltree
+  Pprinttopleveltree
   ; Pprintanf
   Lambdalift
   Closure
