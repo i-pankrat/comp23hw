@@ -164,7 +164,7 @@ let%expect_test _ =
     let e =
       {|
      let make_tuple a b = (a, b)
-     let (f, (s, x)) = make_tuple 1 (2, 3) 
+     let (f, (s, _, x)) = make_tuple 1 (2, 4, 3) 
      |}
     in
     run_lambda_test e
@@ -172,10 +172,10 @@ let%expect_test _ =
   [%expect
     {|
     let make_tuple a b = (a, b);
-    let #tuple_out1  = make_tuple 1 (2, 3);
+    let #tuple_out1  = make_tuple 1 (2, 4, 3);
     let f  = take(#tuple_out1, 0);
-    let s  = take(#tuple_out1, 1);
-    let x  = take(#tuple_out1, 2)
+    let s  = take(take(#tuple_out1, 1), 0);
+    let x  = take(take(#tuple_out1, 1), 2)
  |}]
 ;;
 
@@ -185,7 +185,7 @@ let%expect_test _ =
       {|
     let make_tuple a b = (a, b)
     let x =
-      let (f, s) = make_tuple 1 2 in
+      let (f, (s, (k, l), x)) = make_tuple 1 (2, (4, 5), 3) in
       (f, s) 
       |}
     in
@@ -195,9 +195,12 @@ let%expect_test _ =
     {|
     let make_tuple a b = (a, b);
     let x  =
-        let #tuple_out1 = make_tuple 1 2 in
+        let #tuple_out1 = make_tuple 1 (2, (4, 5), 3) in
         let f = take(#tuple_out1, 0) in
-        let s = take(#tuple_out1, 1) in (f, s)
+        let s = take(take(#tuple_out1, 1), 0) in
+        let k = take(take(take(#tuple_out1, 1), 1), 0) in
+        let l = take(take(take(#tuple_out1, 1), 1), 1) in
+        let x = take(take(take(#tuple_out1, 1), 1), 2) in (f, s)
  |}]
 ;;
 

@@ -20,14 +20,14 @@ let rec get_args_let known = function
   | TFun (TPVar (id, ty), expr, _) -> get_args_let ((id, ty) :: known) expr
   | TFun (TPTuple (pat_lst, _), expr, _) ->
     let rec args_collector pat init =
-      List.fold_right
-        ~f:(fun pat acc ->
-          match pat with
+      List.fold_left
+        ~f:(fun acc ->
+          function
           | TPVar (id, ty) -> (id, ty) :: acc
           | TPTuple (pat_lst, _) -> args_collector pat_lst acc
           | _ -> acc)
         ~init
-        pat
+        (List.rev pat)
     in
     let known = args_collector pat_lst known in
     get_args_let known expr
@@ -39,12 +39,12 @@ let rec lambda_lift_expr env = function
   | TVar (x, ty) -> LVar (x, ty), env
   | TTuple (expr, ty) ->
     let expr, env =
-      List.fold_right
-        ~f:(fun e (acc, env) ->
+      List.fold_left
+        ~f:(fun (acc, env) e ->
           let e, env = lambda_lift_expr env e in
           e :: acc, env)
         ~init:([], env)
-        expr
+        (List.rev expr)
     in
     LTuple (expr, ty), env
   | TFun (_, expr, _) -> lambda_lift_expr env expr
@@ -87,22 +87,44 @@ let rec lambda_lift_expr env = function
     let new_id = genid "#tuple_out" in
     let expr_with_hole, _ =
       let expr_with_hole e2 = LLetIn ((new_id, ty), e1, e2) in
-      let rec dispose_of_patten pat_lst expr_with_hole counter =
-        List.fold_right
-          ~f:(fun pat (expr_with_hole, counter) ->
-            match pat with
+      let rec dispose_of_tuple pat_lst expr_with_hole take_constr =
+        List.fold_left
+          ~f:(fun (expr_with_hole, take_constr, deep_counter) ->
+            function
             | TPVar (id, typ) ->
-              let new_expr e2 =
-                expr_with_hole
-                  (LLetIn ((id, typ), LTake (LVar (new_id, ty), counter), e2))
+              ( (fun e2 ->
+                  expr_with_hole
+                    (LLetIn ((id, typ), LTake (take_constr, deep_counter), e2)))
+              , take_constr
+              , deep_counter + 1 )
+            | TPTuple (pat_lst, _) ->
+              dispose_of_tuple pat_lst expr_with_hole (LTake (take_constr, deep_counter))
+            | TPConst _ | TPWildcard _ -> expr_with_hole, take_constr, deep_counter + 1)
+          ~init:(expr_with_hole, take_constr, 0)
+          (List.rev pat_lst)
+      in
+      let dispose_of_pattern pat_lst expr_with_hole counter =
+        List.fold_left
+          ~f:(fun (expr_with_hole, counter) ->
+            function
+            | TPVar (id, typ) ->
+              ( (fun e2 ->
+                  expr_with_hole
+                    (LLetIn ((id, typ), LTake (LVar (new_id, ty), counter), e2)))
+              , counter + 1 )
+            | TPTuple (pat_lst, _) ->
+              let expr_with_hole, _, _ =
+                dispose_of_tuple
+                  pat_lst
+                  expr_with_hole
+                  (LTake (LVar (new_id, ty), counter))
               in
-              new_expr, counter + 1
-            | TPTuple (pat_lst, _) -> dispose_of_patten pat_lst expr_with_hole counter
+              expr_with_hole, counter + 1
             | TPConst _ | TPWildcard _ -> expr_with_hole, counter + 1)
           ~init:(expr_with_hole, counter)
-          pat_lst
+          (List.rev pat_lst)
       in
-      dispose_of_patten pat_lst expr_with_hole 0
+      dispose_of_pattern pat_lst expr_with_hole 0
     in
     expr_with_hole e2, env
   | TLetIn (TPConst (_, ty), e1, e2) | TLetIn (TPWildcard ty, e1, e2) ->
@@ -122,19 +144,36 @@ let lambda_lift_bindings env = function
     let expr, env = lambda_lift_expr env expr in
     let new_id = genid "#tuple_out" in
     let lst, _ =
-      let rec dispose_of_patten pat_lst lst counter =
-        List.fold_right
-          ~f:(fun pat (env, counter) ->
-            match pat with
+      let rec dispose_of_tuple pat_lst lst take_constr =
+        List.fold_left
+          ~f:(fun (env, take_constr, deep_counter) ->
+            function
             | TPVar (id, typ) ->
-              let env = LLet ((id, typ), [], LTake (LVar (new_id, ty), counter)) :: env in
+              ( LLet ((id, typ), [], LTake (take_constr, deep_counter)) :: env
+              , take_constr
+              , deep_counter + 1 )
+            | TPTuple (pat_lst, _) ->
+              dispose_of_tuple pat_lst env (LTake (take_constr, deep_counter))
+            | TPConst _ | TPWildcard _ -> env, take_constr, deep_counter + 1)
+          ~init:(lst, take_constr, 0)
+          (List.rev pat_lst)
+      in
+      let dispose_of_pattern pat_lst lst counter =
+        List.fold_left
+          ~f:(fun (env, counter) ->
+            function
+            | TPVar (id, typ) ->
+              LLet ((id, typ), [], LTake (LVar (new_id, ty), counter)) :: env, counter + 1
+            | TPTuple (pat_lst, _) ->
+              let env, _, _ =
+                dispose_of_tuple pat_lst env (LTake (LVar (new_id, ty), counter))
+              in
               env, counter + 1
-            | TPTuple (pat_lst, _) -> dispose_of_patten pat_lst env counter
             | TPConst _ | TPWildcard _ -> env, counter + 1)
           ~init:(lst, counter)
-          pat_lst
+          (List.rev pat_lst)
       in
-      dispose_of_patten pat_lst [] 0
+      dispose_of_pattern pat_lst [] 0
     in
     LLet ((new_id, ty), args, expr), env, lst
   | TLet (TPConst (_, ty), expr) | TLet (TPWildcard ty, expr) ->
