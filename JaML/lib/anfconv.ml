@@ -5,6 +5,7 @@
 open Anf
 open Toplevel
 open Ast
+open Base
 
 (* Simply convert type from const to immexpr *)
 let const_to_immexpr = function
@@ -34,7 +35,7 @@ let binop_to_cexpr_constr op e1 e2 =
    Converts llexpr to aexpr
    Argument expr_with_hole helps to create anf tree in cps
 *)
-let anf_expr (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
+let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
   let open Counter.Counter in
   let fresh name = genid name in
   reset 0;
@@ -42,45 +43,84 @@ let anf_expr (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
     match e with
     | LConst (const, _) -> expr_with_hole (const_to_immexpr const)
     | LVar (name, _) -> expr_with_hole (ImmId name)
-    | LBinop (op, e1, e2, _) ->
+    | LBinop ((op, _), e1, e2) ->
       helper e1 (fun limm ->
         helper e2 (fun rimm ->
           let new_name = fresh "#binop" in
           let op = binop_to_cexpr_constr op in
           ALet (new_name, op limm rimm, expr_with_hole (ImmId new_name))))
-    | LApp (e1, e2, _) ->
-      helper e1 (fun limm ->
-        helper e2 (fun rimm ->
-          let new_name = fresh "#app" in
-          ALet (new_name, CApp (limm, rimm), expr_with_hole (ImmId new_name))))
-    | LLetIn (name, e1, e2, _) | LLetRecIn (name, e1, e2, _) ->
+    | LApp _ as application ->
+      let count_args =
+        let rec helper num = function
+          | Ty.Arrow (l, r) -> helper (helper (num + 1) l) r
+          | _ -> num
+        in
+        helper 0
+      in
+      let rec app_helper curr_args = function
+        | LApp (a, b, _) -> helper b (fun imm -> app_helper (imm :: curr_args) a)
+        | LVar (var, ty) ->
+          let helper left_args max_args expr_with_hole =
+            let applied_args = List.length left_args in
+            let diff = applied_args - max_args in
+            match diff with
+            | _ when diff < 0 ->
+              let new_name = fresh "#make_closure" in
+              ALet
+                ( new_name
+                , CMakeClosure (ImmId var, max_args, applied_args, left_args)
+                , expr_with_hole @@ ImmId new_name )
+            | _ ->
+              let new_name = fresh "#app" in
+              ALet
+                (new_name, CApp (ImmId var, left_args), expr_with_hole @@ ImmId new_name)
+          in
+          helper curr_args (count_args ty) expr_with_hole
+        | _ -> failwith "Unreachable"
+      in
+      app_helper [] application
+    | LLetIn ((name, _), e1, e2) ->
       helper e1 (fun immval -> ALet (name, CImmExpr immval, helper e2 expr_with_hole))
     | LIfThenElse (i, t, e, _) ->
       helper i (fun immif ->
         AIfThenElse
-          ( expr_with_hole immif
+          ( CImmExpr immif
           , helper t (fun immthen -> expr_with_hole immthen)
           , helper e (fun immelse -> expr_with_hole immelse) ))
+    | LTuple (elems, _) ->
+      let rec tuple_helper l = function
+        | hd :: tl -> helper hd (fun imm -> tuple_helper (imm :: l) tl)
+        | _ -> expr_with_hole (ImmTuple l)
+      in
+      tuple_helper [] elems
+    | LTake (lexpr, n) ->
+      helper lexpr (fun imm ->
+        let new_name = fresh "#take" in
+        ALet (new_name, CTake (imm, n), expr_with_hole (ImmId new_name)))
   in
   helper e expr_with_hole
 ;;
 
 (* Performs transformation from llbinding to anfexpr *)
 let anf_binding = function
-  | (LLet (name, args, expr, _) | LLetRec (name, args, expr, _)) as binding ->
+  | (LLet ((name, _), args, expr) | LLetRec ((name, _), args, expr)) as binding ->
     let binding_to_anf_expr = function
-      | LLet _ -> fun name args aexpr -> AnfLet (name, args, aexpr)
+      | LLet _ ->
+        fun name args aexpr ->
+          if List.is_empty args
+          then AnfLetVar (name, aexpr)
+          else AnfLetFun (name, args, aexpr)
       | LLetRec _ -> fun name args aexpr -> AnfLetRec (name, args, aexpr)
     in
     let constructor = binding_to_anf_expr binding in
     let args =
       List.map
-        (function
-          | Arg (name, _) -> name)
+        ~f:(function
+          | name, _ -> name)
         args
     in
-    constructor name args (anf_expr expr (fun imm -> ACEexpr (CImmExpr imm)))
+    constructor name args (anf expr (fun imm -> ACEexpr (CImmExpr imm)))
 ;;
 
 (* Performs transformation from Toplevel.llstatements to Anf.anfstatements *)
-let anf lstatements = List.map (fun lbinding -> anf_binding lbinding) lstatements
+let anf lstatements = List.map ~f:(fun lbinding -> anf_binding lbinding) lstatements

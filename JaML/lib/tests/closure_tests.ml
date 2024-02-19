@@ -89,19 +89,11 @@ let%expect_test _ =
   [%expect
     {|
     let fibo = fun n ->
-<<<<<<< HEAD
         let #closure_fun1 = fun x -> fun acc -> fun y -> acc (x + y) in
         let #closure_fun2 = fun n -> fun fibo_cps -> fun acc -> fun x -> fibo_cps (n - 2) #closure_fun1 acc x in
         let #closure_fun3 = fun x -> x in
         let rec fibo_cps = fun n -> fun acc ->
         if (n < 3) then acc 1 else fibo_cps (n - 1) #closure_fun2 acc fibo_cps n in fibo_cps n #closure_fun3
-=======
-        let #closure_fun4 = fun x -> fun acc -> fun y -> acc (x + y) in
-        let #closure_fun5 = fun n -> fun fibo_cps -> fun acc -> fun x -> fibo_cps (n - 2) #closure_fun4 acc x in
-        let #closure_fun6 = fun x -> x in
-        let rec fibo_cps = fun n -> fun acc ->
-        if (n < 3) then acc 1 else fibo_cps (n - 1) #closure_fun5 acc fibo_cps n in fibo_cps n #closure_fun6
->>>>>>> 8b11d37 (Promote test :))
  |}]
 ;;
 
@@ -178,13 +170,8 @@ let%expect_test _ =
   [%expect
     {|
     let f = fun x ->
-<<<<<<< HEAD
         let #closure_fun1 = fun (k, j) -> fun a -> ((k + j) * a) in
         let sum = fun x -> fun a -> #closure_fun1 x a in
-=======
-        let #closure_fun7 = fun (k, j) -> fun a -> ((k + j) * a) in
-        let sum = fun x -> fun a -> #closure_fun7 x a in
->>>>>>> 8b11d37 (Promote test :))
         let fst = fun (a, _) -> a in
         let scd = fun (_, b) -> b in (sum x fst x, sum x scd x)
  |}]
