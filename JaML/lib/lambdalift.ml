@@ -20,7 +20,7 @@ let extend_env env key data = EnvM.set env ~key ~data
     It traverses the list of patterns from the tuple and produces expr_with_hole with
     LetIn constructors of variables, with index reference. *)
 let rec dispose_of_tuple_in pat_lst expr_with_hole take_constr =
-  List.fold_left
+  List.fold
     ~f:(fun (expr_with_hole, take_constr, deep_counter) ->
       function
       | TPVar (id, typ) ->
@@ -39,7 +39,7 @@ let rec dispose_of_tuple_in pat_lst expr_with_hole take_constr =
     It does almost the same thing as the function above, but gives
     a list of let constructors for declaring variables at the top level. *)
 let rec dispose_of_tuple pat_lst lst take_constr =
-  List.fold_left
+  List.fold
     ~f:(fun (env, take_constr, deep_counter) ->
       function
       | TPVar (id, typ) ->
@@ -70,7 +70,7 @@ let rec lambda_lift_expr env = function
   | TVar (x, ty) -> LVar (x, ty), env
   | TTuple (expr, ty) ->
     let expr, env =
-      List.fold_left
+      List.fold
         ~f:(fun (acc, env) e ->
           let e, env = lambda_lift_expr env e in
           e :: acc, env)
@@ -119,7 +119,7 @@ let rec lambda_lift_expr env = function
     let expr_with_hole, _ =
       let expr_with_hole e2 = LLetIn ((new_id, ty), e1, e2) in
       let dispose_of_pattern pat_lst expr_with_hole counter =
-        List.fold_left
+        List.fold
           ~f:(fun (expr_with_hole, counter) ->
             function
             | TPVar (id, typ) ->
@@ -160,7 +160,7 @@ let lambda_lift_bindings env = function
     let new_id = genid "#tuple_out" in
     let lst, _ =
       let dispose_of_pattern pat_lst lst counter =
-        List.fold_left
+        List.fold
           ~f:(fun (env, counter) ->
             function
             | TPVar (id, typ) ->
