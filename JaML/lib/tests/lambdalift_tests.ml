@@ -214,5 +214,13 @@ let%expect_test _ =
     run_lambda_test e
   in
   [%expect
-    {| let x f s y k s m d u l = ((((f + s) + y) / k) * ((((s + m) + d) + u) / l)) |}]
+    {|
+      let x #tuple_arg1 k #tuple_arg2 l =
+          let f = take(#tuple_arg1, 0) in
+          let s = take(#tuple_arg1, 1) in
+          let y = take(#tuple_arg1, 2) in
+          let s = take(#tuple_arg2, 0) in
+          let m = take(take(#tuple_arg2, 1), 0) in
+          let d = take(take(#tuple_arg2, 1), 1) in
+          let u = take(take(#tuple_arg2, 1), 2) in ((((f + s) + y) / k) * ((((s + m) + d) + u) / l)) |}]
 ;;
