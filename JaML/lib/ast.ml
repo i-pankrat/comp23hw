@@ -26,6 +26,7 @@ type bin_op =
 [@@deriving show { with_path = false }]
 
 type pattern =
+  | PConst of const
   | PVar of string
   | PWildcard
   | PTuple of pattern list
