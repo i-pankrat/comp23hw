@@ -7,7 +7,6 @@ open Ty
 
 (** Typed patterns *)
 type tpattern =
-  | TPConst of const * ty
   | TPVar of string * ty
   | TPWildcard of ty
   | TPTuple of tpattern list * ty
