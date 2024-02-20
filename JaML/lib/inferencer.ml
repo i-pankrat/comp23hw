@@ -333,6 +333,10 @@ let infer_pattern =
   let rec (helper : TypeEnv.t -> Ast.pattern -> (TypeEnv.t * ty * tpattern) R.t) =
     fun env pattern ->
     match pattern with
+    | PConst const ->
+      (match const with
+       | CBool _ -> return (env, tybool, TPConst (const, tybool))
+       | CInt _ -> return (env, tyint, TPConst (const, tyint)))
     | PVar arg ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (arg, S (VarSet.empty, tv)) in
@@ -482,6 +486,7 @@ let infer_binding env =
 let fix_typedtree_tpattern subst =
   let apply_subst = Subst.apply subst in
   let rec helper = function
+    | TPConst (const, typ) -> TPConst (const, apply_subst typ)
     | TPVar (var, typ) -> TPVar (var, apply_subst typ)
     | TPWildcard typ -> TPWildcard (apply_subst typ)
     | TPTuple (elems, typ) -> TPTuple (List.map ~f:helper elems, apply_subst typ)

@@ -162,7 +162,7 @@ let rec lambda_lift_expr env = function
         (LVar (new_id, ty))
     in
     expr_with_hole e2, env
-  | TLetIn (TPWildcard ty, e1, e2) ->
+  | TLetIn (TPConst (_, ty), e1, e2) | TLetIn (TPWildcard ty, e1, e2) ->
     let e1, env = lambda_lift_expr env e1 in
     let e2, env = lambda_lift_expr env e2 in
     let new_id = genid "#wildcard" in
@@ -180,7 +180,7 @@ let lambda_lift_bindings env = function
     let new_id = genid "#tuple_out" in
     let lst, _ = dispose_of_pattern pat_lst [] 0 (LVar (new_id, ty)) in
     LLet ((new_id, ty), List.rev args, expr_with_pat_hole expr), env, lst
-  | TLet (TPWildcard ty, expr) ->
+  | TLet (TPConst (_, ty), expr) | TLet (TPWildcard ty, expr) ->
     let expr, env = lambda_lift_expr env expr in
     let new_id = genid "#wildcard" in
     LLet ((new_id, ty), [], expr), env, []
