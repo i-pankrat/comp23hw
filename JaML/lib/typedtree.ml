@@ -12,8 +12,8 @@ type tpattern =
   | TPWildcard of ty
   | TPTuple of tpattern list * ty
 
-type typed_name = string * ty
-type typed_binop = bin_op * ty
+type typed_name = string * ty (** Typed function name *)
+type typed_binop = bin_op * ty (** Typed sign of a binary operation *)
 
 (** Typed expession type *)
 type texpr =
