@@ -42,8 +42,7 @@ let get_ty = function
   | TBinop ((_, ty), _, _)
   | TLetIn (TPVar (_, ty), _, _)
   | TLetIn (TPTuple (_, ty), _, _)
-  | TLetIn (TPWildcard ty, _, _)
-  | TLetIn (TPConst (_, ty), _, _) -> ty
+  | TLetIn (TPWildcard ty, _, _) -> ty
 ;;
 
 (* Search for free variables in the function body. *)

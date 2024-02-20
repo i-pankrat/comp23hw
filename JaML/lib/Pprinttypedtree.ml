@@ -12,8 +12,7 @@ type mode =
 
 let get_tpattern_subst =
   let rec helper subs index = function
-    | TPConst (_, typ) | TPVar (_, typ) | TPWildcard typ ->
-      Pprintty.get_ty_subs subs index typ
+    | TPVar (_, typ) | TPWildcard typ -> Pprintty.get_ty_subs subs index typ
     | TPTuple (patterns, typ) ->
       List.fold
         ~init:(Pprintty.get_ty_subs subs index typ)
@@ -59,7 +58,6 @@ let space ppf depth = fprintf ppf "\n%*s" (4 * depth) ""
 let pp_tpattern subs ppf =
   let pp_ty = Pprintty.pp_ty_with_subs subs in
   let rec helper ppf = function
-    | TPConst (const, typ) -> fprintf ppf "%a: %a" Ast.pp_const const pp_ty typ
     | TPVar (var, typ) -> fprintf ppf "%s: %a" var pp_ty typ
     | TPWildcard typ -> fprintf ppf "_: %a" pp_ty typ
     | TPTuple (patterns, typ) ->
@@ -274,7 +272,6 @@ let pp_name ppf = fprintf ppf "%s"
 
 let pp_tpattern_wt =
   let rec helper ppf = function
-    | TPConst (const, _) -> fprintf ppf "%a" Ast.pp_const const
     | TPVar (var, _) -> fprintf ppf "%s" var
     | TPWildcard _ -> fprintf ppf "_"
     | TPTuple (tpatterns, _) ->
