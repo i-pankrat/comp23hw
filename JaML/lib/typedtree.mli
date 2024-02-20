@@ -6,7 +6,6 @@ open Ast
 
 (** Typed patterns *)
 type tpattern =
-  | TPConst of const * Ty.ty
   | TPVar of string * Ty.ty
   | TPWildcard of Ty.ty
   | TPTuple of tpattern list * Ty.ty

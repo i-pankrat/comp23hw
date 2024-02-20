@@ -88,7 +88,6 @@ type pdispatch =
   }
 
 let pvar_p = (fun v -> PVar v) <$> var_p
-let pconst_p = (fun c -> PConst c) <$> const_p
 let pwc_p = (fun _ -> PWildcard) <$> wc_p
 
 let tuple_p p =
@@ -104,7 +103,7 @@ let ptuple_p p = (fun t -> PTuple t) <$> parens_or_not_asc @@ tuple_p p
 let pack =
   let pattern pack = pack.ptuple pack <|> pack.value pack in
   let pattern_name pack = pack.ptuple pack <|> pwc_p <|> pvar_p in
-  let value _ = parens_or_not_desc @@ (pwc_p <|> pvar_p <|> pconst_p) in
+  let value _ = parens_or_not_desc @@ (pwc_p <|> pvar_p) in
   let ptuple pack =
     fix
     @@ fun _ ->
