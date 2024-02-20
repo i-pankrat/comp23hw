@@ -148,12 +148,12 @@ and closure_expr env known expr =
     expr, known, env
   | TTuple (x, _) ->
     let exprlst, ty, known, env =
-      List.fold_right
-        ~f:(fun texpr (exprlst, tylst, known, env) ->
+      List.fold
+        ~f:(fun (exprlst, tylst, known, env) texpr ->
           let expr, known, env = closure_expr env known texpr in
           expr :: exprlst, get_ty expr :: tylst, known, env)
         ~init:([], [], known, env)
-        x
+        (List.rev x)
     in
     TTuple (exprlst, Tuple ty), known, env
   | TBinop ((op, ty), e1, e2) ->
@@ -230,6 +230,7 @@ let closure_bindings = function
 ;;
 
 let closure expr =
+  reset 0;
   let stms =
     List.fold expr ~init:[] ~f:(fun stms el ->
       let stmt = closure_bindings el in
