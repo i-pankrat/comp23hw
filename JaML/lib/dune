@@ -9,12 +9,12 @@
   Inferencer
   Pprintty
   Pprinttypedtree
-  ; Pprinttopleveltree
+  Pprinttopleveltree
   ; Pprintanf
-  ; Lambdalift
+  Lambdalift
   Closure
   Counter
-  ; Toplevel
+  Toplevel
   ; Anf
   ; Anfconv
   )

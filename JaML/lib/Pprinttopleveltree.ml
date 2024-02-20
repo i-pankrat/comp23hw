@@ -4,13 +4,18 @@ open Stdlib.Format
 let space ppf depth = fprintf ppf "\n%*s" (4 * depth) ""
 let pp_name ppf = fprintf ppf "%s"
 
+let pp_tuple ppf pp_el =
+  fprintf ppf "(%a)" (pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf ", ") pp_el)
+;;
+
 let pp_llexpt_wt =
   let rec helper tabs ppf =
     let helper = helper tabs in
     function
     | LConst (const, _) -> Ast.pp_const ppf const
     | LVar (var_name, _) -> fprintf ppf "%s" var_name
-    | LBinop (binop, ltexpr, rtexpr, _) ->
+    | LTuple (elements, _) -> pp_tuple ppf (fun el -> helper el) elements
+    | LBinop ((binop, _), ltexpr, rtexpr) ->
       fprintf ppf "(%a %a %a)" helper ltexpr Ast.pp_bin_op binop helper rtexpr
     | LApp (fun_texpr, arg_texpr, _) ->
       fprintf ppf "%a %a" helper fun_texpr helper arg_texpr
@@ -26,7 +31,7 @@ let pp_llexpt_wt =
         then_texpr
         helper
         else_texpr
-    | LLetIn (name, body_texpt, in_texpr, _) ->
+    | LLetIn ((name, _), body_texpt, in_texpr) ->
       fprintf
         ppf
         "%alet %a = %a in %a"
@@ -38,32 +43,21 @@ let pp_llexpt_wt =
         body_texpt
         helper
         in_texpr
-    | LLetRecIn (name, body_texpt, in_texpr, _) ->
-      fprintf
-        ppf
-        "%alet rec %a = %a in %a"
-        space
-        tabs
-        pp_name
-        name
-        helper
-        body_texpt
-        helper
-        in_texpr
+    | LTake (llexpr, n) -> fprintf ppf "take(%a, %i)" helper llexpr n
   in
   helper 1
 ;;
 
-let pp_args ppf (Arg (name, _)) = fprintf ppf "%s" name
+let pp_args ppf (name, _) = fprintf ppf "%s" name
 
 let pp_args =
   pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf " ") (fun ppf arg -> pp_args ppf arg)
 ;;
 
 let pp_llbinding_wt ppf = function
-  | LLetRec (name, args, body, _) ->
+  | LLetRec ((name, _), args, body) ->
     fprintf ppf "let rec %a %a = %a" pp_name name pp_args args pp_llexpt_wt body
-  | LLet (name, args, body, _) ->
+  | LLet ((name, _), args, body) ->
     fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_llexpt_wt body
 ;;
 

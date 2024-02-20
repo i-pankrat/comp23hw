@@ -66,7 +66,7 @@ let%expect_test _ =
      let var = 1 in
      let new_sum x var = var + x in
      new_sum x var
-  |}
+      |}
     in
     run_lambda_test e
   in
@@ -86,7 +86,7 @@ let%expect_test _ =
      let new_x = x + 1 in
      let new_sum = new_x + 1 in
      new_sum
-  |}
+      |}
     in
     run_lambda_test e
   in
@@ -96,4 +96,142 @@ let%expect_test _ =
         let new_x = (x + 1) in
         let new_sum = (new_x + 1) in new_sum
  |}]
+;;
+
+(** Tests for tuples *)
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let (a, b) = (1, 2)
+  |} in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+    let #tuple_out1  = (1, 2);
+    let a  = take(#tuple_out1, 0);
+    let b  = take(#tuple_out1, 1)
+    |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let (_, _) = (1, 2)
+    |} in
+    run_lambda_test e
+  in
+  [%expect {| let #tuple_out1  = (1, 2) |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e = {|
+     let make_tuple a b = (a, b)
+     let (f, s) = make_tuple 1 2
+  |} in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let #tuple_out1  = make_tuple 1 2;
+    let f  = take(#tuple_out1, 0);
+    let s  = take(#tuple_out1, 1)
+    |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+     let make_tuple a b = (a, b)
+     let (f, (s, _, x)) = make_tuple 1 (2, 4, 3) 
+     |}
+    in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let #tuple_out1  = make_tuple 1 (2, 4, 3);
+    let f  = take(#tuple_out1, 0);
+    let s  = take(take(#tuple_out1, 1), 0);
+    let x  = take(take(#tuple_out1, 1), 2)
+    |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+    let make_tuple a b = (a, b)
+    let x =
+      let (f, (s, (k, l), x)) = make_tuple 1 (2, (4, 5), 3) in
+      (f, s) 
+      |}
+    in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+    let make_tuple a b = (a, b);
+    let x  =
+        let #tuple_out1 = make_tuple 1 (2, (4, 5), 3) in
+        let f = take(#tuple_out1, 0) in
+        let s = take(take(#tuple_out1, 1), 0) in
+        let k = take(take(take(#tuple_out1, 1), 1), 0) in
+        let l = take(take(take(#tuple_out1, 1), 1), 1) in
+        let x = take(take(take(#tuple_out1, 1), 1), 2) in (f, s)
+    |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+    let x (f, s, y) k (s, (m, d), u) l = ((f + s + y) / k) * ((s + m + d + u) / l)
+      |}
+    in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+      let x #tuple_arg1 k #tuple_arg2 l =
+          let f = take(#tuple_arg1, 0) in
+          let s = take(#tuple_arg1, 1) in
+          let y = take(#tuple_arg1, 2) in
+          let s = take(#tuple_arg2, 0) in
+          let m = take(take(#tuple_arg2, 1), 0) in
+          let d = take(take(#tuple_arg2, 1), 1) in
+          let u = take(take(#tuple_arg2, 1), 2) in ((((f + s) + y) / k) * ((((s + m) + d) + u) / l)) 
+    |}]
+;;
+
+let test a =
+  let (f1, f2, f3), s, t = a in
+  f1 + f2 + f3 + s + t
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+      let test a =
+        let ((f1, f2, f3), s, t) = a in
+        f1 + f2 + f3 + s + t
+      |}
+    in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+      let test a =
+          let f1 = take(take(a, 0), 0) in
+          let f2 = take(take(a, 0), 1) in
+          let f3 = take(take(a, 0), 2) in
+          let s = take(a, 1) in
+          let t = take(a, 2) in ((((f1 + f2) + f3) + s) + t)
+    |}]
 ;;
