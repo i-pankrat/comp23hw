@@ -184,8 +184,8 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
-  interpret_parse show_pattern patt_p "a,1,c";
-  [%expect {| (PTuple [(PVar "a"); (PConst (CInt 1)); (PVar "c")]) |}]
+  interpret_parse show_pattern patt_p "a, (x, y), c";
+  [%expect {| (PTuple [(PVar "a"); (PTuple [(PVar "x"); (PVar "y")]); (PVar "c")]) |}]
 ;;
 
 let%expect_test _ =
