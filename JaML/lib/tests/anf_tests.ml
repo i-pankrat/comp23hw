@@ -105,6 +105,28 @@ let%expect_test _ =
         let #binop2 = (3 + 1) in (#binop2, #binop1) |}]
 ;;
 
+(* Тут в тесте порядок элементов кортежа нарущен, нужно понять проблема в анф'е или в принтере.
+   Посмотрев тест можно понять что все же проблемы не с анф, а с принтером кортежей :) *)
+let%expect_test _ =
+  let _ =
+    let e = "let ((x, s), y) = ((1 ,(2 - 4)), 3 + 1)" in
+    run_anf_tests e
+  in
+  [%expect
+    {|
+    let #tuple_out1 =
+        let #binop1 = (2 - 4) in
+        let #binop2 = (3 + 1) in (#binop2, (#binop1, 1));
+    let x =
+        let #take1 = take(#tuple_out1, 0) in
+        let #take2 = take(#take1, 0) in #take2;
+    let s =
+        let #take1 = take(#tuple_out1, 0) in
+        let #take2 = take(#take1, 1) in #take2;
+    let y =
+        let #take1 = take(#tuple_out1, 1) in #take1 |}]
+;;
+
 let%expect_test _ =
   let _ =
     let e =
@@ -208,7 +230,8 @@ let%expect_test _ =
       |} in
     run_anf_tests e
   in
-  [%expect {|
+  [%expect
+    {|
     let sum_cortage #tuple_arg1 =
         let #take1 = take(#tuple_arg1, 0) in
         let #take2 = take(#take1, 0) in
