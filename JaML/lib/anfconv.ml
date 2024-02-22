@@ -76,7 +76,10 @@ let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
                 (new_name, CApp (ImmId var, left_args), expr_with_hole @@ ImmId new_name)
           in
           helper curr_args (count_args ty) expr_with_hole
-        | _ -> failwith "Unreachable"
+        | _ ->
+          failwith
+            "Unreachable: After all transformations in closure converison and lambda \
+             lifting LApp must contain a LVar as the left operand."
       in
       app_helper [] application
     | LLetIn ((name, _), e1, e2) ->
@@ -88,9 +91,12 @@ let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
           , helper t (fun immthen -> expr_with_hole immthen)
           , helper e (fun immelse -> expr_with_hole immelse) ))
     | LTuple (elems, _) ->
+      let new_name = fresh "#tuple" in
       let rec tuple_helper l = function
         | hd :: tl -> helper hd (fun imm -> tuple_helper (imm :: l) tl)
-        | _ -> expr_with_hole (ImmTuple l)
+        | _ ->
+          ALet
+            (new_name, CImmExpr (ImmTuple (List.rev l)), expr_with_hole (ImmId new_name))
       in
       tuple_helper [] elems
     | LTake (lexpr, n) ->

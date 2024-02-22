@@ -101,12 +101,11 @@ let%expect_test _ =
   [%expect
     {|
     let x =
-        let #binop1 = (1 + 2) in
-        let #binop2 = (3 + 1) in (#binop2, #binop1) |}]
+        let #binop2 = (1 + 2) in
+        let #binop3 = (3 + 1) in
+        let #tuple1 = (#binop2, #binop3) in #tuple1 |}]
 ;;
 
-(* Тут в тесте порядок элементов кортежа нарущен, нужно понять проблема в анф'е или в принтере.
-   Посмотрев тест можно понять что все же проблемы не с анф, а с принтером кортежей :) *)
 let%expect_test _ =
   let _ =
     let e = "let ((x, s), y) = ((1 ,(2 - 4)), 3 + 1)" in
@@ -115,8 +114,10 @@ let%expect_test _ =
   [%expect
     {|
     let #tuple_out1 =
-        let #binop1 = (2 - 4) in
-        let #binop2 = (3 + 1) in (#binop2, (#binop1, 1));
+        let #binop3 = (2 - 4) in
+        let #tuple2 = (1, #binop3) in
+        let #binop4 = (3 + 1) in
+        let #tuple1 = (#tuple2, #binop4) in #tuple1;
     let x =
         let #take1 = take(#tuple_out1, 0) in
         let #take2 = take(#take1, 0) in #take2;
@@ -147,8 +148,9 @@ let%expect_test _ =
     let sum a b =
         let #binop1 = (a + b) in #binop1;
     let x =
-        let #make_closure1 = make_closure(apply2, sum 3 4) in
-        let #make_closure2 = make_closure(apply2, sum 1 2) in (#make_closure2, #make_closure1)
+        let #make_closure2 = make_closure(apply2, sum 3 4) in
+        let #make_closure3 = make_closure(apply2, sum 1 2) in
+        let #tuple1 = (#make_closure2, #make_closure3) in #tuple1
  |}]
 ;;
 
@@ -239,16 +241,14 @@ let%expect_test _ =
         let #take3 = take(#tuple_arg1, 0) in
         let #take4 = take(#take3, 1) in
         let b = #take4 in
-        let #take5 = take(#tuple_arg1, 0) in
-        let #take6 = take(#take5, 2) in
-        let #take7 = take(#take6, 0) in
-        let d = #take7 in
-        let #take8 = take(#tuple_arg1, 0) in
-        let #take9 = take(#take8, 2) in
-        let #take10 = take(#take9, 1) in
-        let e = #take10 in
-        let #binop11 = (a + b) in
-        let #binop12 = (#binop11 + d) in
-        let #binop13 = (#binop12 + e) in #binop13
+        let #take5 = take(#tuple_arg1, 1) in
+        let #take6 = take(#take5, 0) in
+        let d = #take6 in
+        let #take7 = take(#tuple_arg1, 1) in
+        let #take8 = take(#take7, 1) in
+        let e = #take8 in
+        let #binop9 = (a + b) in
+        let #binop10 = (#binop9 + d) in
+        let #binop11 = (#binop10 + e) in #binop11
  |}]
 ;;
