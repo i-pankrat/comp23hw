@@ -18,38 +18,56 @@ let extend_env env key data = EnvM.set env ~key ~data
 
 (** The function is used to get rid of tuples in TLetIn constructors and in arguments.
     It traverses the list of patterns from the tuple and produces expr_with_hole with
-    LLetIn constructors of variables, with index reference. *)
-let rec dispose_of_tuple_in pat_lst expr_with_hole take_constr =
+    LLetIn constructors of variables, with index reference.
+    Accumulates an expression with a hole, take_constr (needed to accumulate index calls to list items),
+    counter to count tuple indices (Which is needed to count indices of tuple items
+    on which the function was called at the moment) and counter to count indices for variables.*)
+let rec dispose_of_tuple_in pat_lst expr_with_hole take_constr start_constr =
   List.fold
-    ~f:(fun (expr_with_hole, take_constr, deep_counter) ->
+    ~f:(fun (expr_with_hole, take_constr, counter, deep_counter) ->
       function
       | TPVar (id, typ) ->
         ( (fun e2 ->
             expr_with_hole (LLetIn ((id, typ), LTake (take_constr, deep_counter), e2)))
         , take_constr
+        , counter + 1
         , deep_counter + 1 )
       | TPTuple (pat_lst, _) ->
-        dispose_of_tuple_in pat_lst expr_with_hole (LTake (take_constr, deep_counter))
-      | _ -> expr_with_hole, take_constr, deep_counter + 1)
-    ~init:(expr_with_hole, take_constr, 0)
+        let expr_with_hole, take_constr, _, _ =
+          dispose_of_tuple_in
+            pat_lst
+            expr_with_hole
+            (LTake (start_constr, counter))
+            start_constr
+        in
+        expr_with_hole, take_constr, counter + 1, deep_counter + 1
+      | _ -> expr_with_hole, take_constr, counter + 1, deep_counter + 1)
+    ~init:(expr_with_hole, take_constr, 0, 0)
     (List.rev pat_lst)
 ;;
 
 (** The function is used to get rid of tuples in TLet constructors.
     It does almost the same thing as the function above, but gives
-    a list of let constructors for declaring variables at the top level. *)
-let rec dispose_of_tuple pat_lst lst take_constr =
+    a list of let constructors for declaring variables at the top level.
+    Accumulates an expression with a hole, take_constr (needed to accumulate index calls to list items),
+    counter to count tuple indices (Which is needed to count indices of tuple items
+    on which the function was called at the moment) and counter to count indices for variables.*)
+let rec dispose_of_tuple pat_lst lst take_constr start_constr =
   List.fold
-    ~f:(fun (env, take_constr, deep_counter) ->
+    ~f:(fun (env, take_constr, counter, deep_counter) ->
       function
       | TPVar (id, typ) ->
         ( LLet ((id, typ), [], LTake (take_constr, deep_counter)) :: env
         , take_constr
+        , counter + 1
         , deep_counter + 1 )
       | TPTuple (pat_lst, _) ->
-        dispose_of_tuple pat_lst env (LTake (take_constr, deep_counter))
-      | _ -> env, take_constr, deep_counter + 1)
-    ~init:(lst, take_constr, 0)
+        let env, take_constr, _, _ =
+          dispose_of_tuple pat_lst env (LTake (start_constr, deep_counter)) start_constr
+        in
+        env, take_constr, counter + 1, deep_counter + 1
+      | _ -> env, take_constr, counter + 1, deep_counter + 1)
+    ~init:(lst, take_constr, 0, 0)
     (List.rev pat_lst)
 ;;
 
@@ -62,8 +80,9 @@ let dispose_of_pattern_in pat_lst expr_with_hole counter var =
         ( (fun e2 -> expr_with_hole (LLetIn ((id, typ), LTake (var, counter), e2)))
         , counter + 1 )
       | TPTuple (pat_lst, _) ->
-        let expr_with_hole, _, _ =
-          dispose_of_tuple_in pat_lst expr_with_hole (LTake (var, counter))
+        let take_constr = LTake (var, counter) in
+        let expr_with_hole, _, _, _ =
+          dispose_of_tuple_in pat_lst expr_with_hole take_constr take_constr
         in
         expr_with_hole, counter + 1
       | _ -> expr_with_hole, counter + 1)
@@ -78,7 +97,8 @@ let dispose_of_pattern pat_lst lst counter var =
       function
       | TPVar (id, typ) -> LLet ((id, typ), [], LTake (var, counter)) :: env, counter + 1
       | TPTuple (pat_lst, _) ->
-        let env, _, _ = dispose_of_tuple pat_lst env (LTake (var, counter)) in
+        let take_constr = LTake (var, counter) in
+        let env, _, _, _ = dispose_of_tuple pat_lst env take_constr take_constr in
         env, counter + 1
       | _ -> env, counter + 1)
     ~init:(lst, counter)
@@ -90,8 +110,9 @@ let rec get_args_let (known, expr_with_hole) = function
     get_args_let ((id, ty) :: known, expr_with_hole) expr
   | TFun (TPTuple (pat_lst, ty), expr, _) ->
     let new_id = genid "#tuple_arg" in
-    let expr_with_hole, _, _ =
-      dispose_of_tuple_in pat_lst expr_with_hole (LVar (new_id, ty))
+    let take_constr = LVar (new_id, ty) in
+    let expr_with_hole, _, _, _ =
+      dispose_of_tuple_in pat_lst expr_with_hole take_constr take_constr
     in
     get_args_let ((new_id, ty) :: known, expr_with_hole) expr
   | _ -> known, expr_with_hole

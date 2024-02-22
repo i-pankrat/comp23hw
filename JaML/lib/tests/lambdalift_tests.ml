@@ -235,3 +235,23 @@ let%expect_test _ =
           let t = take(a, 2) in ((((f1 + f2) + f3) + s) + t)
     |}]
 ;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+      let sum_cortage ((a, b), (d, _), _, (x, y)) = a + b + d + x + y
+      |}
+    in
+    run_lambda_test e
+  in
+  [%expect
+    {|
+      let sum_cortage #tuple_arg1 =
+          let a = take(take(#tuple_arg1, 0), 0) in
+          let b = take(take(#tuple_arg1, 0), 1) in
+          let d = take(take(#tuple_arg1, 1), 0) in
+          let x = take(take(#tuple_arg1, 3), 0) in
+          let y = take(take(#tuple_arg1, 3), 1) in ((((a + b) + d) + x) + y)
+    |}]
+;;
