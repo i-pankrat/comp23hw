@@ -1392,3 +1392,49 @@ let%expect_test _ =
     ))
 |}]
 ;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELet
+          ( PVar "make_tuple"
+          , EFun (PVar "a", EFun (PVar "b", ETuple [ EVar "a"; EVar "b" ])) )
+      ; ELet
+          ( PTuple [ PVar "f"; PTuple [ PVar "d"; PVar "e" ] ]
+          , EApp
+              ( EApp (EVar "make_tuple", EConst (CInt 1))
+              , EApp (EApp (EVar "make_tuple", EConst (CBool true)), EConst (CInt 2)) ) )
+      ]
+    in
+    infer_statements e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLet(
+        make_tuple: ('a -> ('c -> ('a * 'c))),
+        (TFun: ('a -> ('c -> ('a * 'c))) (
+            a: 'a,
+            (TFun: ('c -> ('a * 'c)) (
+                b: 'c,
+                ((a: 'a), (b: 'c)) : ('a * 'c)
+            ))
+        ))
+    ));
+    (TLet(
+        (f: int, (d: bool, e: int): (bool * int)): (int * (bool * int)),
+        (TApp: (int * (bool * int)) (
+            (TApp: ((bool * int) -> (int * (bool * int))) (
+                (make_tuple: (int -> ((bool * int) -> (int * (bool * int))))),
+                (TConst((CInt 1): int))
+            )),
+            (TApp: (bool * int) (
+                (TApp: (int -> (bool * int)) (
+                    (make_tuple: (bool -> (int -> (bool * int)))),
+                    (TConst((CBool true): bool))
+                )),
+                (TConst((CInt 2): int))
+            ))
+        ))
+    )) |}]
+;;
