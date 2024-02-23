@@ -331,8 +331,7 @@ let lookup_env var env =
 
 let infer_pattern =
   let rec (helper : TypeEnv.t -> Ast.pattern -> (TypeEnv.t * ty * tpattern) R.t) =
-    fun env pattern ->
-    match pattern with
+    fun env -> function
     | PVar arg ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (arg, S (VarSet.empty, tv)) in

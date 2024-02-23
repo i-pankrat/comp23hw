@@ -68,7 +68,7 @@ let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
               let new_name = fresh "#make_closure" in
               ALet
                 ( new_name
-                , CMakeClosure (ImmId var, max_args, applied_args, left_args)
+                , CMakeClosure (ImmId var, max_args, applied_args, List.rev left_args)
                 , expr_with_hole @@ ImmId new_name )
             | _ ->
               let new_name = fresh "#app" in
