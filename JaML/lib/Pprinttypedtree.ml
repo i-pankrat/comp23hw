@@ -249,12 +249,37 @@ let pp_tbinding_complete ppf = function
       e
 ;;
 
-let pp_tbinding_brief ppf =
-  let pp_ty = Pprintty.pp_ty in
-  function
-  | TLetRec ((name, typ), _) -> fprintf ppf "%s: %a" name pp_ty typ
-  | TLet (TPVar (name, typ), _) -> fprintf ppf "%s: %a" name pp_ty typ
-  | _ -> failwith "Currently not implemented"
+let rec pp_tpattern_without_type ppf = function
+  | TPVar (name, _) -> fprintf ppf "%s" name
+  | TPWildcard _ -> fprintf ppf "_"
+  | TPTuple (elems, _) ->
+    fprintf
+      ppf
+      "(%a)"
+      (pp_print_list
+         ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
+         (fun ppf elem -> pp_tpattern_without_type ppf elem))
+      elems
+;;
+
+let pp_tpattern_with_type ppf = function
+  | TPVar (name, typ) -> fprintf ppf "%s: %a" name Pprintty.pp_ty typ
+  | TPWildcard typ -> fprintf ppf "_ : %a" Pprintty.pp_ty typ
+  | TPTuple (elems, typ) ->
+    fprintf
+      ppf
+      "(%a) : %a"
+      (pp_print_list
+         ~pp_sep:(fun ppf _ -> fprintf ppf ", ")
+         (fun ppf elem -> pp_tpattern_without_type ppf elem))
+      elems
+      Pprintty.pp_ty
+      typ
+;;
+
+let pp_tbinding_brief ppf = function
+  | TLetRec ((name, typ), _) -> fprintf ppf "%s: %a" name Pprintty.pp_ty typ
+  | TLet (tpattern, _) -> fprintf ppf "%a" pp_tpattern_with_type tpattern
 ;;
 
 let pp_tbinding = pp_tbinding_complete
