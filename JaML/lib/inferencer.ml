@@ -419,9 +419,7 @@ let infer_expr =
       let t1_typ = Subst.apply pattern_subst t1_typ in
       let env3 =
         match pattern with
-        | PVar name ->
-          let generalized_pat_typ = generalize env2 t1_typ in
-          TypeEnv.extend env2 (name, generalized_pat_typ)
+        | PVar name -> TypeEnv.extend env2 (name, generalize env2 t1_typ)
         | _ -> env2
       in
       let* s2, t2, te2 = helper env3 e2 in
@@ -539,15 +537,20 @@ let infer_statements (bindings : Ast.statements) : tbinding list t =
           let* subst, ty, tbinding = infer_binding env new_binding in
           let* env, pat_typ, _ = infer_pattern env pattern in
           let* subst2 = unify pat_typ ty in
+          let ty = Subst.apply subst2 ty in
+          let env2 =
+            match pattern with
+            | PVar name -> TypeEnv.extend env (name, generalize env ty)
+            | _ -> env
+          in
           let* fin_subst = Subst.compose subst subst2 in
-          let env = TypeEnv.apply fin_subst env in
-          return (env, fix_typedtree fin_subst tbinding :: tbindings)
+          let env' = TypeEnv.apply fin_subst env2 in
+          return (env', fix_typedtree fin_subst tbinding :: tbindings)
         | ELetRec (name, _) as new_binding ->
           let* env, tbindings = env_binding in
           let* subst, ty, tbinding = infer_binding env new_binding in
-          return
-            ( TypeEnv.extend env (name, S (VarSet.empty, ty))
-            , fix_typedtree subst tbinding :: tbindings ))
+          let env2 = TypeEnv.extend env (name, generalize env ty) in
+          return (env2, fix_typedtree subst tbinding :: tbindings))
       bindings
   in
   return @@ List.rev tbindings
