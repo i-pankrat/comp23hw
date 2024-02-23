@@ -10,14 +10,13 @@
   Pprintty
   Pprinttypedtree
   Pprinttopleveltree
-  ; Pprintanf
+  Pprintanf
   Lambdalift
   Closure
   Counter
   Toplevel
-  ; Anf
-  ; Anfconv
-  )
+  Anf
+  Anfconv)
  (libraries base angstrom)
  (instrumentation
   (backend bisect_ppx))
