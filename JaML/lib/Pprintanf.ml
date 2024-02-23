@@ -37,7 +37,7 @@ let pp_cexpr ppf = function
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
   | CMakeClosure (imm, _, _, args) ->
-    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm (pp_args pp_immexpr) args
+    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm (pp_args pp_immexpr) (List.rev args)
 ;;
 
 let pp_aexpr =

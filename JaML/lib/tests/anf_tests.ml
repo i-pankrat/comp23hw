@@ -148,9 +148,9 @@ let%expect_test _ =
     let sum a b =
         let #binop1 = (a + b) in #binop1;
     let x =
-        let #make_closure2 = make_closure(apply2, sum 3 4) in
-        let #make_closure3 = make_closure(apply2, sum 1 2) in
-        let #tuple1 = (#make_closure2, #make_closure3) in #tuple1
+        let #app2 = (apply2 sum 3 4) in
+        let #app3 = (apply2 sum 1 2) in
+        let #tuple1 = (#app2, #app3) in #tuple1
  |}]
 ;;
 
@@ -217,9 +217,9 @@ let%expect_test _ =
         let #binop4 = (#binop3 + e) in
         let #binop5 = (#binop4 + f) in #binop5;
     let sum4 a b c d =
-        let #make_closure1 = make_closure(sum6, a b c d) in #make_closure1;
+        let #make_closure1 = make_closure(sum6, d c b a) in #make_closure1;
     let sum2 a b =
-        let #make_closure1 = make_closure(sum4, a b) in #make_closure1;
+        let #make_closure1 = make_closure(sum4, b a) in #make_closure1;
     let rer =
         let #app1 = (sum2 1 2 3 4 5 6) in #app1
  |}]
@@ -250,5 +250,71 @@ let%expect_test _ =
         let #binop9 = (a + b) in
         let #binop10 = (#binop9 + d) in
         let #binop11 = (#binop10 + e) in #binop11
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+    let fac n =
+      let rec fack n k =
+      if n <= 1 then k 1
+      else fack (n-1) ((fun k n m -> k (m * n)) k n) 
+      in
+      fack n (fun x -> x)
+      |}
+    in
+    run_anf_tests e
+  in
+  [%expect
+    {|
+    let #closure_fun1 k n m =
+        let #binop1 = (m * n) in
+        let #app2 = (k #binop1) in #app2;
+    let #closure_fun2 x = x;
+    let fack n k =
+        let #binop1 = (n <= 1) in if #binop1 then
+        let #app5 = (k 1) in #app5 else
+        let #make_closure2 = make_closure(#closure_fun1, n k) in
+        let #binop3 = (n - 1) in
+        let #app4 = (fack #binop3 #make_closure2) in #app4;
+    let fac n =
+        let #app1 = (fack n #closure_fun2) in #app1
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+    let fibo n =
+      let rec fibo_cps n acc =
+      if n < 3 then acc 1
+      else fibo_cps (n - 1) (fun x -> fibo_cps (n - 2) (fun y -> acc (x + y)))
+      in
+      fibo_cps n (fun x -> x)
+      |}
+    in
+    run_anf_tests e
+  in
+  [%expect
+    {|
+    let #closure_fun1 x acc y =
+        let #binop1 = (x + y) in
+        let #app2 = (acc #binop1) in #app2;
+    let #closure_fun2 n fibo_cps acc x =
+        let #make_closure1 = make_closure(#closure_fun1, x acc) in
+        let #binop2 = (n - 2) in
+        let #app3 = (fibo_cps #binop2 #make_closure1) in #app3;
+    let #closure_fun3 x = x;
+    let fibo_cps n acc =
+        let #binop1 = (n < 3) in if #binop1 then
+        let #app5 = (acc 1) in #app5 else
+        let #make_closure2 = make_closure(#closure_fun2, n fibo_cps acc) in
+        let #binop3 = (n - 1) in
+        let #app4 = (fibo_cps #binop3 #make_closure2) in #app4;
+    let fibo n =
+        let #app1 = (fibo_cps n #closure_fun3) in #app1
  |}]
 ;;
