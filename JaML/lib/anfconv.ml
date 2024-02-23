@@ -52,7 +52,7 @@ let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
     | LApp _ as application ->
       let count_args =
         let rec helper num = function
-          | Ty.Arrow (l, r) -> helper (helper (num + 1) l) r
+          | Ty.Arrow (_, r) -> helper (num + 1) r
           | _ -> num
         in
         helper 0
@@ -62,9 +62,9 @@ let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
         | LVar (var, ty) ->
           let helper left_args max_args expr_with_hole =
             let applied_args = List.length left_args in
-            let diff = applied_args - max_args in
+            let diff = max_args - applied_args in
             match diff with
-            | _ when diff < 0 ->
+            | _ when diff > 0 ->
               let new_name = fresh "#make_closure" in
               ALet
                 ( new_name
