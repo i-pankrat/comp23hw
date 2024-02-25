@@ -13,6 +13,7 @@ let run_anf_tests test_case =
   |> Closure.closure
   |> Lambdalift.lambda_lift
   |> Anfconv.anf
+  |> Result.get_ok
   |> fun anfstatements -> Format.printf "%a" pp_anfstatements anfstatements
 ;;
 
@@ -64,10 +65,10 @@ let%expect_test _ =
     {|
     let test f x y =
         let #app1 = (f 1 2) in if #app1 then
-        let #binop4 = (x + 1) in
-        let #binop5 = (#binop4 + 3) in #binop5 else
-        let #binop2 = (y + 4) in
-        let #binop3 = (#binop2 + 5) in #binop3
+        let #binop2 = (x + 1) in
+        let #binop3 = (#binop2 + 3) in #binop3 else
+        let #binop4 = (y + 4) in
+        let #binop5 = (#binop4 + 5) in #binop5
     |}]
 ;;
 
@@ -89,7 +90,7 @@ let%expect_test _ =
         let #binop3 = (n - 1) in
         let #app4 = (fact #binop3 #binop2) in #app4;
     let fac_tailrec n =
-        let #app1 = (fact n 1) in #app1
+        let #app5 = (fact n 1) in #app5
   |}]
 ;;
 
@@ -119,13 +120,13 @@ let%expect_test _ =
         let #binop4 = (3 + 1) in
         let #tuple1 = (#tuple2, #binop4) in #tuple1;
     let x =
-        let #take1 = take(#tuple_out1, 0) in
-        let #take2 = take(#take1, 0) in #take2;
+        let #take5 = take(#tuple_out1, 0) in
+        let #take6 = take(#take5, 0) in #take6;
     let s =
-        let #take1 = take(#tuple_out1, 0) in
-        let #take2 = take(#take1, 1) in #take2;
+        let #take7 = take(#tuple_out1, 0) in
+        let #take8 = take(#take7, 1) in #take8;
     let y =
-        let #take1 = take(#tuple_out1, 1) in #take1 |}]
+        let #take9 = take(#tuple_out1, 1) in #take9 |}]
 ;;
 
 let%expect_test _ =
@@ -146,11 +147,11 @@ let%expect_test _ =
     let apply2 f fst snd =
         let #app1 = (f fst snd) in #app1;
     let sum a b =
-        let #binop1 = (a + b) in #binop1;
+        let #binop2 = (a + b) in #binop2;
     let x =
-        let #app2 = (apply2 sum 3 4) in
-        let #app3 = (apply2 sum 1 2) in
-        let #tuple1 = (#app2, #app3) in #tuple1
+        let #app4 = (apply2 sum 3 4) in
+        let #app5 = (apply2 sum 1 2) in
+        let #tuple3 = (#app4, #app5) in #tuple3
  |}]
 ;;
 
@@ -192,7 +193,7 @@ let%expect_test _ =
         let #binop2 = (#binop1 + e) in
         let #binop3 = (#binop2 + f) in #binop3;
     let partial =
-        let #app1 = (sum 1 2 3 4 5 6) in #app1
+        let #app4 = (sum 1 2 3 4 5 6) in #app4
  |}]
 ;;
 
@@ -217,11 +218,11 @@ let%expect_test _ =
         let #binop4 = (#binop3 + e) in
         let #binop5 = (#binop4 + f) in #binop5;
     let sum4 a b c d =
-        let #make_closure1 = make_closure(sum6, d c b a) in #make_closure1;
+        let #make_closure6 = make_closure(sum6, d c b a) in #make_closure6;
     let sum2 a b =
-        let #make_closure1 = make_closure(sum4, b a) in #make_closure1;
+        let #make_closure7 = make_closure(sum4, b a) in #make_closure7;
     let rer =
-        let #app1 = (sum2 1 2 3 4 5 6) in #app1
+        let #app8 = (sum2 1 2 3 4 5 6) in #app8
  |}]
 ;;
 
@@ -274,13 +275,13 @@ let%expect_test _ =
         let #app2 = (k #binop1) in #app2;
     let #closure_fun2 x = x;
     let fack n k =
-        let #binop1 = (n <= 1) in if #binop1 then
-        let #app5 = (k 1) in #app5 else
-        let #make_closure2 = make_closure(#closure_fun1, n k) in
-        let #binop3 = (n - 1) in
-        let #app4 = (fack #binop3 #make_closure2) in #app4;
+        let #binop3 = (n <= 1) in if #binop3 then
+        let #app4 = (k 1) in #app4 else
+        let #make_closure5 = make_closure(#closure_fun1, n k) in
+        let #binop6 = (n - 1) in
+        let #app7 = (fack #binop6 #make_closure5) in #app7;
     let fac n =
-        let #app1 = (fack n #closure_fun2) in #app1
+        let #app8 = (fack n #closure_fun2) in #app8
  |}]
 ;;
 
@@ -304,17 +305,17 @@ let%expect_test _ =
         let #binop1 = (x + y) in
         let #app2 = (acc #binop1) in #app2;
     let #closure_fun2 n fibo_cps acc x =
-        let #make_closure1 = make_closure(#closure_fun1, x acc) in
-        let #binop2 = (n - 2) in
-        let #app3 = (fibo_cps #binop2 #make_closure1) in #app3;
+        let #make_closure3 = make_closure(#closure_fun1, x acc) in
+        let #binop4 = (n - 2) in
+        let #app5 = (fibo_cps #binop4 #make_closure3) in #app5;
     let #closure_fun3 x = x;
     let fibo_cps n acc =
-        let #binop1 = (n < 3) in if #binop1 then
-        let #app5 = (acc 1) in #app5 else
-        let #make_closure2 = make_closure(#closure_fun2, n fibo_cps acc) in
-        let #binop3 = (n - 1) in
-        let #app4 = (fibo_cps #binop3 #make_closure2) in #app4;
+        let #binop6 = (n < 3) in if #binop6 then
+        let #app7 = (acc 1) in #app7 else
+        let #make_closure8 = make_closure(#closure_fun2, n fibo_cps acc) in
+        let #binop9 = (n - 1) in
+        let #app10 = (fibo_cps #binop9 #make_closure8) in #app10;
     let fibo n =
-        let #app1 = (fibo_cps n #closure_fun3) in #app1
+        let #app11 = (fibo_cps n #closure_fun3) in #app11
  |}]
 ;;
