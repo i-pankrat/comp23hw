@@ -13,7 +13,6 @@
   Pprintanf
   Lambdalift
   Closure
-  Counter
   Toplevel
   Anf
   Anfconv
