@@ -76,7 +76,7 @@ end = struct
   end
 
   let fresh : int t = fun last -> last + 1, Result.Ok last
-  let run m = snd (m 0)
+  let run (m : 'a t) = snd (m 0)
 end
 
 type fresh = int

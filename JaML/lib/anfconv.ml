@@ -6,6 +6,7 @@ open Anf
 open Toplevel
 open Ast
 open Base
+open Monads.StateResultOrResultStateMonad
 
 (* Simply convert type from const to immexpr *)
 let const_to_immexpr = function
@@ -35,20 +36,18 @@ let binop_to_cexpr_constr op e1 e2 =
    Converts llexpr to aexpr
    Argument expr_with_hole helps to create anf tree in cps
 *)
-let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
-  let open Counter.Counter in
-  let fresh name = genid name in
-  reset 0;
-  let rec helper (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
+let anf (e : llexpr) (expr_with_hole : immexpr -> (aexpr, string) t) =
+  let rec helper (e : llexpr) (expr_with_hole : immexpr -> (aexpr, string) t) =
     match e with
     | LConst (const, _) -> expr_with_hole (const_to_immexpr const)
     | LVar (name, _) -> expr_with_hole (ImmId name)
     | LBinop ((op, _), e1, e2) ->
       helper e1 (fun limm ->
         helper e2 (fun rimm ->
-          let new_name = fresh "#binop" in
+          let* new_name = fresh "#binop" in
           let op = binop_to_cexpr_constr op in
-          ALet (new_name, op limm rimm, expr_with_hole (ImmId new_name))))
+          let* hole = expr_with_hole @@ ImmId new_name in
+          return (ALet (new_name, op limm rimm, hole))))
     | LApp _ as application ->
       let count_args =
         let rec helper num = function
@@ -65,44 +64,45 @@ let anf (e : llexpr) (expr_with_hole : immexpr -> aexpr) =
             let diff = max_args - applied_args in
             match diff with
             | _ when diff > 0 ->
-              let new_name = fresh "#make_closure" in
-              ALet
-                ( new_name
-                , CMakeClosure (ImmId var, max_args, applied_args, List.rev left_args)
-                , expr_with_hole @@ ImmId new_name )
+              let* new_name = fresh "#make_closure" in
+              let* hole = expr_with_hole @@ ImmId new_name in
+              return
+                (ALet
+                   ( new_name
+                   , CMakeClosure (ImmId var, max_args, applied_args, List.rev left_args)
+                   , hole ))
             | _ ->
-              let new_name = fresh "#app" in
-              ALet
-                (new_name, CApp (ImmId var, left_args), expr_with_hole @@ ImmId new_name)
+              let* new_name = fresh "#app" in
+              let* hole = expr_with_hole @@ ImmId new_name in
+              return (ALet (new_name, CApp (ImmId var, left_args), hole))
           in
           helper curr_args (count_args ty) expr_with_hole
-        | _ ->
-          failwith
-            "Unreachable: After all transformations in closure converison and lambda \
-             lifting LApp must contain a LVar as the left operand."
+        | _ -> fail "Left opperand of application is not a variable"
       in
       app_helper [] application
     | LLetIn ((name, _), e1, e2) ->
-      helper e1 (fun immval -> ALet (name, CImmExpr immval, helper e2 expr_with_hole))
+      helper e1 (fun immval ->
+        let* aexpr = helper e2 expr_with_hole in
+        return (ALet (name, CImmExpr immval, aexpr)))
     | LIfThenElse (i, t, e, _) ->
       helper i (fun immif ->
-        AIfThenElse
-          ( CImmExpr immif
-          , helper t (fun immthen -> expr_with_hole immthen)
-          , helper e (fun immelse -> expr_with_hole immelse) ))
+        let* athen = helper t (fun immthen -> expr_with_hole immthen) in
+        let* aelse = helper e (fun immelse -> expr_with_hole immelse) in
+        return (AIfThenElse (CImmExpr immif, athen, aelse)))
     | LTuple (elems, _) ->
-      let new_name = fresh "#tuple" in
+      let* new_name = fresh "#tuple" in
       let rec tuple_helper l = function
         | hd :: tl -> helper hd (fun imm -> tuple_helper (imm :: l) tl)
         | _ ->
-          ALet
-            (new_name, CImmExpr (ImmTuple (List.rev l)), expr_with_hole (ImmId new_name))
+          let* hole = expr_with_hole (ImmId new_name) in
+          return (ALet (new_name, CImmExpr (ImmTuple (List.rev l)), hole))
       in
       tuple_helper [] elems
     | LTake (lexpr, n) ->
       helper lexpr (fun imm ->
-        let new_name = fresh "#take" in
-        ALet (new_name, CTake (imm, n), expr_with_hole (ImmId new_name)))
+        let* new_name = fresh "#take" in
+        let* hole = expr_with_hole (ImmId new_name) in
+        return (ALet (new_name, CTake (imm, n), hole)))
   in
   helper e expr_with_hole
 ;;
@@ -125,8 +125,11 @@ let anf_binding = function
           | name, _ -> name)
         args
     in
-    constructor name args (anf expr (fun imm -> ACEexpr (CImmExpr imm)))
+    let* aexpr = anf expr (fun imm -> return (ACEexpr (CImmExpr imm))) in
+    return @@ constructor name args aexpr
 ;;
 
 (* Performs transformation from Toplevel.llstatements to Anf.anfstatements *)
-let anf lstatements = List.map ~f:(fun lbinding -> anf_binding lbinding) lstatements
+let anf lstatements =
+  run @@ monad_map ~f:(fun lbinding -> anf_binding lbinding) lstatements
+;;
