@@ -5,7 +5,7 @@
 open Base
 open Typedtree
 open Ty
-open Counter.Counter
+open Monads.VariableNameGeneratorMonad
 
 module TS = struct
   type t = string * Ty.ty
@@ -112,8 +112,8 @@ let rec create_closure_let (elm, env) diff =
 let rec get_args_let env known = function
   | TFun (TPVar (id, ty1), e2, ty2) ->
     let known' = NameS.add (id, ty1) known in
-    let fv_known, e2, known, env = get_args_let env known' e2 in
-    fv_known, TFun (TPVar (id, ty1), e2, ty2), known, env
+    let* fv_known, e2, known, env = get_args_let env known' e2 in
+    return (fv_known, TFun (TPVar (id, ty1), e2, ty2), known, env)
   | TFun (TPTuple (texpr, ty), e2, ty2) ->
     let rec helper texpr =
       List.fold
@@ -126,54 +126,53 @@ let rec get_args_let env known = function
         texpr
     in
     let known' = helper texpr in
-    let fv_known, e2, known, env = get_args_let env known' e2 in
-    fv_known, TFun (TPTuple (texpr, ty), e2, ty2), known, env
+    let* fv_known, e2, known, env = get_args_let env known' e2 in
+    return (fv_known, TFun (TPTuple (texpr, ty), e2, ty2), known, env)
   | TFun (tpattern, e2, ty2) ->
-    let fv_known, e2, known, env = get_args_let env known e2 in
-    fv_known, TFun (tpattern, e2, ty2), known, env
+    let* fv_known, e2, known, env = get_args_let env known e2 in
+    return (fv_known, TFun (tpattern, e2, ty2), known, env)
   | other ->
     let fv_known = free_variables other in
-    let expr, _, env = closure_expr env known other in
-    fv_known, expr, known, env
+    let* expr, _, env = closure_expr env known other in
+    return (fv_known, expr, known, env)
 
-and closure_expr env known expr =
-  match expr with
+and closure_expr env known = function
   | TVar (x, ty) as tvar ->
     let expr, _ =
       match find x env with
       | diff, ty1, _ -> put_diff_app (List.rev diff) (tvar, ty1)
       | (exception Stdlib.Not_found) | (exception Not_found_s _) -> tvar, ty
     in
-    expr, known, env
+    return (expr, known, env)
   | TTuple (x, _) ->
-    let exprlst, ty, known, env =
-      List.fold
+    let* exprlst, ty, known, env =
+      monad_fold
         ~f:(fun (exprlst, tylst, known, env) texpr ->
-          let expr, known, env = closure_expr env known texpr in
-          expr :: exprlst, get_ty expr :: tylst, known, env)
+          let* expr, known, env = closure_expr env known texpr in
+          return (expr :: exprlst, get_ty expr :: tylst, known, env))
         ~init:([], [], known, env)
         (List.rev x)
     in
-    TTuple (exprlst, Tuple ty), known, env
+    return (TTuple (exprlst, Tuple ty), known, env)
   | TBinop ((op, ty), e1, e2) ->
-    let e1, known, env = closure_expr env known e1 in
-    let e2, known, env = closure_expr env known e2 in
-    TBinop ((op, ty), e1, e2), known, env
+    let* e1, known, env = closure_expr env known e1 in
+    let* e2, known, env = closure_expr env known e2 in
+    return (TBinop ((op, ty), e1, e2), known, env)
   | TFun (tpattern, expr, ty2) ->
-    let fv_known, expr, known, env =
+    let* fv_known, expr, known, env =
       get_args_let env NameS.empty (TFun (tpattern, expr, ty2))
     in
     let diff = NameS.diff fv_known known |> NameS.elements in
     let e1, ty = put_diff_arg diff (expr, ty2) in
-    let new_id = genid "#closure_fun" in
+    let* new_id = fresh "#closure_fun" in
     let env =
       let constr_new_let e2 = TLetIn (TPVar (new_id, ty), e1, e2) in
       extend_env new_id (diff, ty, Some constr_new_let) env
     in
     let expr, _ = put_diff_app diff (TVar (new_id, ty), ty2) in
-    expr, known, env
+    return (expr, known, env)
   | TApp (fst, scd, ty) ->
-    let fst, known, env = closure_expr env known fst in
+    let* fst, known, env = closure_expr env known fst in
     let fst, ty =
       match fst with
       | TVar (x, ty) ->
@@ -182,58 +181,57 @@ and closure_expr env known expr =
          | None -> fst, ty)
       | _ -> fst, ty
     in
-    let scd, known, env = closure_expr env known scd in
-    TApp (fst, scd, ty), known, env
+    let* scd, known, env = closure_expr env known scd in
+    return (TApp (fst, scd, ty), known, env)
   | TIfThenElse (cond, e1, e2, ty) ->
-    let cond, known, env = closure_expr env known cond in
-    let e1, known, env = closure_expr env known e1 in
-    let e2, known, env = closure_expr env known e2 in
-    TIfThenElse (cond, e1, e2, ty), known, env
+    let* cond, known, env = closure_expr env known cond in
+    let* e1, known, env = closure_expr env known e1 in
+    let* e2, known, env = closure_expr env known e2 in
+    return (TIfThenElse (cond, e1, e2, ty), known, env)
   | TLetRecIn ((id, ty), e1, e2) ->
     let known = NameS.singleton (id, ty) in
-    let fv_known, e1, known', env = get_args_let env known e1 in
+    let* fv_known, e1, known', env = get_args_let env known e1 in
     let diff =
       (if NameS.cardinal known' = 1 then known' else NameS.diff fv_known known')
       |> NameS.elements
     in
     let e1, ty = put_diff_arg diff (e1, ty) in
     let env = if List.is_empty diff then env else extend_env id (diff, ty, None) env in
-    let e2, known, env = closure_expr env known' e2 in
-    TLetRecIn ((id, ty), e1, e2), known, env
+    let* e2, known, env = closure_expr env known' e2 in
+    return (TLetRecIn ((id, ty), e1, e2), known, env)
   | TLetIn (TPVar (id, ty), e1, e2) ->
-    let fv_known, e1, known', env = get_args_let env NameS.empty e1 in
+    let* fv_known, e1, known', env = get_args_let env NameS.empty e1 in
     let diff =
       (if NameS.is_empty known' then known' else NameS.diff fv_known known')
       |> NameS.elements
     in
     let e1, ty = put_diff_arg diff (e1, ty) in
     let env = if List.is_empty diff then env else extend_env id (diff, ty, None) env in
-    let e2, known, env = closure_expr env known' e2 in
-    TLetIn (TPVar (id, ty), e1, e2), known, env
+    let* e2, known, env = closure_expr env known' e2 in
+    return (TLetIn (TPVar (id, ty), e1, e2), known, env)
   | TLetIn (id, e1, e2) ->
-    let e1, known, env = closure_expr env known e1 in
-    let e2, known, env = closure_expr env known e2 in
-    TLetIn (id, e1, e2), known, env
-  | other -> other, known, env
+    let* e1, known, env = closure_expr env known e1 in
+    let* e2, known, env = closure_expr env known e2 in
+    return (TLetIn (id, e1, e2), known, env)
+  | other -> return (other, known, env)
 ;;
 
 let closure_bindings = function
   | TLet (tpattern, expr) ->
-    let _, expr, _, env = get_args_let EnvM.empty NameS.empty expr in
+    let* _, expr, _, env = get_args_let EnvM.empty NameS.empty expr in
     let expr, _ = create_closure_let (expr, env) env in
-    TLet (tpattern, expr)
+    return (TLet (tpattern, expr))
   | TLetRec ((id, ty), expr) ->
-    let _, expr, _, env = get_args_let EnvM.empty (NameS.singleton (id, ty)) expr in
+    let* _, expr, _, env = get_args_let EnvM.empty (NameS.singleton (id, ty)) expr in
     let expr, _ = create_closure_let (expr, env) env in
-    TLetRec ((id, ty), expr)
+    return (TLetRec ((id, ty), expr))
 ;;
 
 let closure expr =
-  reset 0;
   let stms =
-    List.fold expr ~init:[] ~f:(fun stms el ->
-      let stmt = closure_bindings el in
-      stmt :: stms)
+    monad_fold expr ~init:[] ~f:(fun stms el ->
+      let* stmt = closure_bindings el in
+      return (stmt :: stms))
   in
-  List.rev stms
+  List.rev (run stms)
 ;;

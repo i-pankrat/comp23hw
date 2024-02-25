@@ -16,7 +16,8 @@
   Counter
   Toplevel
   Anf
-  Anfconv)
+  Anfconv
+  Monads)
  (modules_without_implementation Toplevel Anf)
  (libraries base angstrom)
  (instrumentation
