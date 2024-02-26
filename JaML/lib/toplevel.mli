@@ -12,7 +12,7 @@ open Ast
 type typed_id = string * ty (** Typed function name *)
 type typed_binop = bin_op * ty (** Typed sign of a binary operation *)
 
-(** Typed expession type *)
+(** Typed expression type *)
 type llexpr =
   | LConst of const * ty (** Typed expression for the constant *)
   | LVar of string * ty (** Typed expression for the variables *)
