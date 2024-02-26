@@ -49,7 +49,7 @@ module R : sig
   (** Running a transformer: getting the inner result value *)
   val run : 'a t -> ('a, error) Result.t
 end = struct
-  (* A compositon: State monad after Result monad *)
+  (* A composition: State monad after Result monad *)
   type 'a t = int -> int * ('a, error) Result.t
 
   let ( >>= ) : 'a 'b. 'a t -> ('a -> 'b t) -> 'b t =
@@ -143,7 +143,7 @@ module Subst : sig
   val apply : t -> ty -> ty
   val unify : ty -> ty -> t R.t
 
-  (** Compositon of substitutions *)
+  (** Composition of substitutions *)
   val compose : t -> t -> t R.t
 
   val compose_all : t list -> t R.t
