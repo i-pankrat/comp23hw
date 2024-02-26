@@ -11,7 +11,7 @@ type prim =
 val show_prim : prim -> string
 val pp_prim : Format.formatter -> prim -> unit
 
-(** Types for expession *)
+(** Types for expression *)
 type ty =
   | Tyvar of int (** Represent polymorphic type *)
   | Prim of prim (** Ground types *)

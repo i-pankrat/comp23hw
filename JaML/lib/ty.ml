@@ -15,7 +15,7 @@ let show_prim = function
 
 let pp_prim ppf prim = Stdlib.Format.fprintf ppf "%s" (show_prim prim)
 
-(** Types for expession *)
+(** Types for expression *)
 type ty =
   | Tyvar of int (** Represent polymorphic type *)
   | Prim of prim (** Ground types *)
