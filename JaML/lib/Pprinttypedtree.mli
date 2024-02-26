@@ -6,10 +6,10 @@ type mode =
   | Brief
   | Complete
 
-(** Pretty printer for typed expession *)
+(** Pretty printer for typed expression *)
 val pp_texpr : Format.formatter -> Typedtree.texpr -> unit
 
-(** Pretty printer for typed expession *)
+(** Pretty printer for typed expression *)
 val pp_tbinding : Format.formatter -> Typedtree.tbinding -> unit
 
 (** Pretty printer for typed statements *)

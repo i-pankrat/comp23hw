@@ -13,7 +13,7 @@ type tpattern =
 type typed_name = string * Ty.ty
 type typed_binop = bin_op * Ty.ty
 
-(** Typed expession type *)
+(** Typed expression type *)
 type texpr =
   | TConst of const * Ty.ty (** Typed expression for the constant *)
   | TVar of string * Ty.ty (** Typed expression for the variables *)
