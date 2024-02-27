@@ -4,17 +4,20 @@
 
 open Jaml_lib
 open Jaml_lib.Pprintanf
+open Jaml_lib.Parser
+open Result
 
 let run_anf_tests test_case =
-  Parser.parse test_case
-  |> Result.get_ok
-  |> Inferencer.infer Inferencer.Enable
-  |> Result.get_ok
-  |> Closure.closure
-  |> Lambdalift.lambda_lift
-  |> Anfconv.anf
-  |> Result.get_ok
-  |> fun anfstatements -> Format.printf "%a" pp_anfstatements anfstatements
+  let fmt = Format.std_formatter in
+  match parse test_case with
+  | Error err -> pp_error fmt err
+  | Ok commands ->
+    (match Inferencer.infer Inferencer.Enable commands with
+     | Error err -> Inferencer.pp_error fmt err
+     | Ok typed_commands ->
+       (match Closure.closure typed_commands |> Lambdalift.lambda_lift |> Anfconv.anf with
+        | Error err -> Format.printf "Anf error: %s%!" err
+        | Ok anfstatements -> Format.printf "%a" pp_anfstatements anfstatements))
 ;;
 
 let%expect_test _ =

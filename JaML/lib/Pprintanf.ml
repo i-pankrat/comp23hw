@@ -23,7 +23,9 @@ let rec pp_immexpr ppf = function
   | ImmTuple elems -> pp_tuple ppf pp_immexpr elems
 ;;
 
-let pp_cexpr ppf = function
+let pp_cexpr ppf =
+  let pp_args = pp_args pp_immexpr in
+  function
   | CPlus (l, r) -> fprintf ppf "(%a + %a)" pp_immexpr l pp_immexpr r
   | CMinus (l, r) -> fprintf ppf "(%a - %a)" pp_immexpr l pp_immexpr r
   | CDivide (l, r) -> fprintf ppf "(%a / %a)" pp_immexpr l pp_immexpr r
@@ -37,11 +39,11 @@ let pp_cexpr ppf = function
   | CLt (l, r) -> fprintf ppf "(%a < %a)" pp_immexpr l pp_immexpr r
   | CGte (l, r) -> fprintf ppf "(%a >= %a)" pp_immexpr l pp_immexpr r
   | CLte (l, r) -> fprintf ppf "(%a <= %a)" pp_immexpr l pp_immexpr r
-  | CApp (func, args) -> fprintf ppf "(%a %a)" pp_immexpr func (pp_args pp_immexpr) args
+  | CApp (func, args) -> fprintf ppf "(%a %a)" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
   | CMakeClosure (imm, _, _, args) ->
-    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm (pp_args pp_immexpr) args
+    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm pp_args args
 ;;
 
 let pp_aexpr =
@@ -75,13 +77,9 @@ let pp_aexpr =
   helper 1
 ;;
 
-let pp_args =
-  pp_print_list
-    ~pp_sep:(fun ppf _ -> fprintf ppf " ")
-    (fun ppf binding -> (fun ppf -> fprintf ppf "%s") ppf binding)
-;;
-
-let pp_anfexpr ppf = function
+let pp_anfexpr ppf =
+  let pp_args = pp_args (fun x -> fprintf x "%s") in
+  function
   | AnfLetVar (name, aexpr) -> fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr
   | AnfLetFun (name, args, aexpr) ->
     fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_aexpr aexpr

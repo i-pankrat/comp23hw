@@ -3,15 +3,18 @@
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
 open Jaml_lib
+open Jaml_lib.Parser
 
 let run_closure_test test_case =
   let open Pprinttypedtree in
-  Parser.parse test_case
-  |> Result.get_ok
-  |> Inferencer.infer Inferencer.Enable
-  |> Result.get_ok
-  |> Closure.closure
-  |> fun tstatements -> Format.printf "%a" pp_statements_without_types tstatements
+  let fmt = Format.std_formatter in
+  match parse test_case with
+  | Error err -> pp_error fmt err
+  | Ok commands ->
+    (match Inferencer.infer Inferencer.Enable commands with
+     | Error err -> Inferencer.pp_error fmt err
+     | Ok typed_commands ->
+       Format.printf "%a" pp_statements_without_types (Closure.closure typed_commands))
 ;;
 
 let%expect_test _ =

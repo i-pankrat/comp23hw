@@ -7,15 +7,15 @@ open Typedtree
 open Ty
 open Monads.VariableNameGeneratorMonad
 
+(* Set constructed with type t = (id, ty).
+   id is a string representation of variables or function names;
+   ty is its type *)
 module TS = struct
   type t = string * Ty.ty
 
   let compare ((n1, _) : t) ((n2, _) : t) = Base.Poly.compare n1 n2
 end
 
-(* Set constructed with type t = (id, ty).
-   id is a string representation of variables or function names;
-   ty is its type *)
 module NameS = Stdlib.Set.Make (TS)
 
 (* Environment Map
@@ -25,10 +25,20 @@ module NameS = Stdlib.Set.Make (TS)
    ty -- the final modified function type to which the function should be cast;
    option constr -- used to store let in constructors created from anonymous functions.
    In the constructor we put expr which should be in the (in) part of let in *)
+type map_type =
+  (String.t, (String.t * Ty.ty) list * Ty.ty * (texpr -> texpr) option) Map.Poly.t
+
 module EnvM = Base.Map.Poly
 
+let extend_env
+  (key : string)
+  (data : (string * Ty.ty) list * Ty.ty * (texpr -> texpr) option)
+  (env : map_type)
+  =
+  EnvM.set env ~key ~data
+;;
+
 let find id env = EnvM.find_exn env id
-let extend_env key data env = EnvM.set env ~key ~data
 
 (* Function for obtaining a type related from a typed ast *)
 let get_ty = function
