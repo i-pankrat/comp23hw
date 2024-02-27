@@ -36,7 +36,7 @@ let binop_to_cexpr_constr op e1 e2 =
    Converts llexpr to aexpr
    Argument expr_with_hole helps to create anf tree in cps
 *)
-let anf (e : llexpr) (expr_with_hole : immexpr -> (aexpr, string) t) =
+let anf e expr_with_hole =
   let rec helper (e : llexpr) (expr_with_hole : immexpr -> (aexpr, string) t) =
     match e with
     | LConst (const, _) -> expr_with_hole (const_to_immexpr const)
