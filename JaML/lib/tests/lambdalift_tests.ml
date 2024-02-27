@@ -4,19 +4,20 @@
 
 open Jaml_lib
 open Jaml_lib.Lambdalift
+open Jaml_lib.Parser
 
 let run_lambda_test test_case =
-  Parser.parse test_case
-  |> Result.get_ok
-  |> Inferencer.infer Inferencer.Enable
-  |> Result.get_ok
-  |> Closure.closure
-  |> lambda_lift
-  |> fun llstatements ->
-  Format.printf
-    "%a"
-    Jaml_lib.Pprinttopleveltree.pp_llstatements_without_types
-    llstatements
+  let fmt = Format.std_formatter in
+  match parse test_case with
+  | Error err -> pp_error fmt err
+  | Ok commands ->
+    (match Inferencer.infer Inferencer.Enable commands with
+     | Error err -> Inferencer.pp_error fmt err
+     | Ok typed_commands ->
+       Format.printf
+         "%a"
+         Jaml_lib.Pprinttopleveltree.pp_llstatements_without_types
+         (Closure.closure typed_commands |> lambda_lift))
 ;;
 
 let%expect_test _ =
