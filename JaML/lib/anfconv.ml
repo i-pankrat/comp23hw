@@ -6,7 +6,7 @@ open Anf
 open Toplevel
 open Ast
 open Base
-open Monads.StateResultOrResultStateMonad
+open Monads.ResultStateMonad
 
 (* Simply convert type from const to immexpr *)
 let const_to_immexpr = function
@@ -119,12 +119,7 @@ let anf_binding = function
       | LLetRec _ -> fun name args aexpr -> AnfLetRec (name, args, aexpr)
     in
     let constructor = binding_to_anf_expr binding in
-    let args =
-      List.map
-        ~f:(function
-          | name, _ -> name)
-        args
-    in
+    let args = List.map ~f:fst args in
     let* aexpr = anf expr (fun imm -> return (ACEexpr (CImmExpr imm))) in
     return @@ constructor name args aexpr
 ;;

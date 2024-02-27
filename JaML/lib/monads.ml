@@ -31,7 +31,7 @@ module VariableNameGeneratorMonad = struct
   ;;
 end
 
-module StateResultOrResultStateMonad = struct
+module ResultStateMonad = struct
   type ('a, 'error) t = int -> ('a, 'error) Result.t * int
 
   let return x : ('a, 'error) t = fun state -> Result.return x, state

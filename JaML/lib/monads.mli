@@ -12,7 +12,7 @@ module VariableNameGeneratorMonad : sig
   val monad_fold : init:'a -> f:('a -> 'b -> 'a t) -> 'b list -> 'a t
 end
 
-module StateResultOrResultStateMonad : sig
+module ResultStateMonad : sig
   type ('a, 'error) t
 
   val return : 'a -> ('a, 'error) t
