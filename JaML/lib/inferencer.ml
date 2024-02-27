@@ -106,7 +106,7 @@ module Type = struct
 
   let rec occurs_in v =
     let occurs_in_list ts =
-      List.fold ts ~init:false ~f:(fun acc t -> occurs_in v t || acc)
+      List.fold ts ~init:false ~f:(fun acc t -> acc || occurs_in v t)
     in
     function
     | Tyvar b -> b = v
@@ -117,7 +117,7 @@ module Type = struct
 
   let free_vars =
     let rec helper acc =
-      let free_list acc ts = List.fold ts ~init:acc ~f:(fun acc t -> helper acc t) in
+      let free_list acc ts = List.fold ts ~init:acc ~f:helper in
       function
       | Tyvar b -> VarSet.add b acc
       | Arrow (l, r) -> helper (helper acc l) r
