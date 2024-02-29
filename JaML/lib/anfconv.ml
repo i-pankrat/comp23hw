@@ -14,24 +14,6 @@ let const_to_immexpr = function
   | CBool b -> ImmBool b
 ;;
 
-(* Maps binary operations from ast.ml to binary operations from anf.ml*)
-let binop_to_cexpr_constr op e1 e2 =
-  match op with
-  | Add -> CPlus (e1, e2)
-  | Sub -> CMinus (e1, e2)
-  | Div -> CDivide (e1, e2)
-  | Mul -> CMultiply (e1, e2)
-  | Xor -> CXor (e1, e2)
-  | And -> CAnd (e1, e2)
-  | Or -> COr (e1, e2)
-  | Eq -> CEq (e1, e2)
-  | Neq -> CNeq (e1, e2)
-  | Gt -> CGt (e1, e2)
-  | Lt -> CLt (e1, e2)
-  | Gte -> CGte (e1, e2)
-  | Lte -> CLte (e1, e2)
-;;
-
 (*
    Converts llexpr to aexpr
    Argument expr_with_hole helps to create anf tree in cps
@@ -45,9 +27,8 @@ let anf e expr_with_hole =
       helper e1 (fun limm ->
         helper e2 (fun rimm ->
           let* new_name = fresh "#binop" in
-          let op = binop_to_cexpr_constr op in
           let* hole = expr_with_hole @@ ImmId new_name in
-          return (ALet (new_name, op limm rimm, hole))))
+          return (ALet (new_name, CBinOp (op, limm, rimm), hole))))
     | LApp _ as application ->
       let count_args =
         let rec helper num = function

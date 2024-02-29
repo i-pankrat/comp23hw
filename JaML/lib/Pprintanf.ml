@@ -26,19 +26,8 @@ let rec pp_immexpr ppf = function
 let pp_cexpr ppf =
   let pp_args = pp_args pp_immexpr in
   function
-  | CPlus (l, r) -> fprintf ppf "(%a + %a)" pp_immexpr l pp_immexpr r
-  | CMinus (l, r) -> fprintf ppf "(%a - %a)" pp_immexpr l pp_immexpr r
-  | CDivide (l, r) -> fprintf ppf "(%a / %a)" pp_immexpr l pp_immexpr r
-  | CMultiply (l, r) -> fprintf ppf "(%a * %a)" pp_immexpr l pp_immexpr r
-  | CXor (l, r) -> fprintf ppf "(%a ^ %a)" pp_immexpr l pp_immexpr r
-  | CAnd (l, r) -> fprintf ppf "(%a && %a)" pp_immexpr l pp_immexpr r
-  | COr (l, r) -> fprintf ppf "(%a || %a)" pp_immexpr l pp_immexpr r
-  | CEq (l, r) -> fprintf ppf "(%a = %a)" pp_immexpr l pp_immexpr r
-  | CNeq (l, r) -> fprintf ppf "(%a <> %a)" pp_immexpr l pp_immexpr r
-  | CGt (l, r) -> fprintf ppf "(%a > %a)" pp_immexpr l pp_immexpr r
-  | CLt (l, r) -> fprintf ppf "(%a < %a)" pp_immexpr l pp_immexpr r
-  | CGte (l, r) -> fprintf ppf "(%a >= %a)" pp_immexpr l pp_immexpr r
-  | CLte (l, r) -> fprintf ppf "(%a <= %a)" pp_immexpr l pp_immexpr r
+  | CBinOp (op, l, r) ->
+    fprintf ppf "(%a %a %a)" pp_immexpr l Ast.pp_bin_op op pp_immexpr r
   | CApp (func, args) -> fprintf ppf "(%a %a)" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n

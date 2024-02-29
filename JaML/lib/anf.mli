@@ -9,19 +9,7 @@ type immexpr =
   | ImmTuple of immexpr list (** (1, 2, a, b) *)
 
 type cexpr =
-  | CPlus of immexpr * immexpr (** a + b *)
-  | CMinus of immexpr * immexpr (** a - b *)
-  | CDivide of immexpr * immexpr (** a / b *)
-  | CMultiply of immexpr * immexpr (** a * b *)
-  | CXor of immexpr * immexpr (** a ^ b *)
-  | CAnd of immexpr * immexpr (** a && b *)
-  | COr of immexpr * immexpr (** a || b *)
-  | CEq of immexpr * immexpr (** a = b *)
-  | CNeq of immexpr * immexpr (** a <> b *)
-  | CGt of immexpr * immexpr (** a > b *)
-  | CLt of immexpr * immexpr (** a < b *)
-  | CGte of immexpr * immexpr (** a >= b *)
-  | CLte of immexpr * immexpr (** a <= b *)
+  | CBinOp of Ast.bin_op * immexpr * immexpr (** Binary operation *)
   | CApp of immexpr * immexpr list (** Apply function to its arguments *)
   | CTake of immexpr * int (** Take(tuple, 0) *)
   | CMakeClosure of immexpr * int * int * immexpr list
