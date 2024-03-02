@@ -6,13 +6,13 @@ type immexpr =
   | ImmNum of int (** ..., -1, 0, 1, ... *)
   | ImmBool of bool (** true, false *)
   | ImmId of string (** identifiers or variables *)
-  | ImmTuple of immexpr list (** (1, 2, a, b) *)
 
 type cexpr =
   | CBinOp of Ast.bin_op * immexpr * immexpr (** Binary operation *)
   | CApp of immexpr * immexpr list (** Apply function to its arguments *)
+  | CTuple of immexpr list (** (1, 2, a, b) *)
   | CTake of immexpr * int (** Take(tuple, 0) *)
-  | CMakeClosure of immexpr * int * int * immexpr list
+  | CMakeClosure of immexpr * immexpr
   | CImmExpr of immexpr (** immexpr *)
 
 type aexpr =

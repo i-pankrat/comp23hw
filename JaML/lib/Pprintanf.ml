@@ -16,11 +16,10 @@ let pp_args pp_el ppf =
   fprintf ppf "%a" (pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf " ") pp_el)
 ;;
 
-let rec pp_immexpr ppf = function
+let pp_immexpr ppf = function
   | ImmNum i -> fprintf ppf "%d" i
   | ImmBool b -> fprintf ppf "%B" b
   | ImmId s -> fprintf ppf "%s" s
-  | ImmTuple elems -> pp_tuple ppf pp_immexpr elems
 ;;
 
 let pp_cexpr ppf =
@@ -28,11 +27,12 @@ let pp_cexpr ppf =
   function
   | CBinOp (op, l, r) ->
     fprintf ppf "(%a %a %a)" pp_immexpr l Ast.pp_bin_op op pp_immexpr r
-  | CApp (func, args) -> fprintf ppf "(%a %a)" pp_immexpr func pp_args args
+  | CApp (func, args) -> fprintf ppf "%a %a" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
-  | CMakeClosure (imm, _, _, args) ->
-    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm pp_args args
+  | CMakeClosure (imm, arg) ->
+    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm pp_immexpr arg
+  | CTuple elems -> pp_tuple ppf pp_immexpr elems
 ;;
 
 let pp_aexpr =

@@ -11,16 +11,3 @@ module VariableNameGeneratorMonad : sig
   val run : 'a t -> 'a
   val monad_fold : init:'a -> f:('a -> 'b -> 'a t) -> 'b list -> 'a t
 end
-
-module ResultStateMonad : sig
-  type ('a, 'error) t
-
-  val return : 'a -> ('a, 'error) t
-  val fail : 'error -> ('a, 'error) t
-  val bind : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
-  val ( let* ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
-  val fresh : string -> (string, 'error) t
-  val run : ('a, 'error) t -> ('a, 'error) result
-  val monad_fold : init:'a -> f:('a -> 'b -> ('a, 'error) t) -> 'b list -> ('a, 'error) t
-  val monad_map : 'a list -> f:('a -> ('b, 'c) t) -> ('b list, 'c) t
-end

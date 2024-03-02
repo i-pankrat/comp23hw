@@ -6,7 +6,7 @@ open Anf
 open LL_ast
 open Ast
 open Base
-open Monads.ResultStateMonad
+open Monads.VariableNameGeneratorMonad
 
 (* Simply convert type from const to immexpr *)
 let const_to_immexpr = function
@@ -14,12 +14,34 @@ let const_to_immexpr = function
   | CBool b -> ImmBool b
 ;;
 
+module Env : sig
+  type argsEnv
+
+  val add : argsEnv -> string -> int -> argsEnv
+  val get : argsEnv -> string -> int
+  val empty : argsEnv
+end = struct
+  module E = Stdlib.Map.Make (String)
+
+  type argsEnv = int E.t
+
+  let add env f n_arg = E.add f n_arg env
+
+  let get env f =
+    match E.find_opt f env with
+    | Some x -> x
+    | _ -> 0
+  ;;
+
+  let empty = E.empty
+end
+
 (*
    Converts llexpr to aexpr
    Argument expr_with_hole helps to create anf tree in cps
 *)
-let anf e expr_with_hole =
-  let rec helper (e : llexpr) (expr_with_hole : immexpr -> (aexpr, string) t) =
+let anf env e expr_with_hole =
+  let rec helper (e : llexpr) (expr_with_hole : immexpr -> aexpr t) =
     match e with
     | LConst (const, _) -> expr_with_hole (const_to_immexpr const)
     | LVar (name, _) -> expr_with_hole (ImmId name)
@@ -30,35 +52,43 @@ let anf e expr_with_hole =
           let* hole = expr_with_hole @@ ImmId new_name in
           return (ALet (new_name, CBinOp (op, limm, rimm), hole))))
     | LApp _ as application ->
-      let count_args =
-        let rec helper num = function
-          | Ty.Arrow (_, r) -> helper (num + 1) r
-          | _ -> num
+      let construct_app expr_with_hole imm args =
+        let* new_name = fresh "#app" in
+        let* hole = expr_with_hole (ImmId new_name) in
+        return (ALet (new_name, CApp (imm, args), hole))
+      in
+      let closure_expr_with_hole next_expr_with_hole args imm =
+        let rec helper args imm =
+          let* new_name = fresh "#closure" in
+          match args with
+          | [] ->
+            let* hole = next_expr_with_hole (ImmId new_name) in
+            return (ALet (new_name, CImmExpr imm, hole))
+          | hd :: tl ->
+            let* hole = helper tl (ImmId new_name) in
+            return (ALet (new_name, CMakeClosure (imm, hd), hole))
         in
-        helper 0
+        helper args imm
+      in
+      let rec get_f_name = function
+        | LConst _ | LTuple _ | LBinop _ | LApp _ | LIfThenElse _ | LTake _ -> ""
+        | LLetIn (_, _, n) -> get_f_name n
+        | LVar (name, _) -> name
       in
       let rec app_helper curr_args = function
         | LApp (a, b, _) -> helper b (fun imm -> app_helper (imm :: curr_args) a)
-        | LVar (var, ty) ->
-          let helper left_args max_args expr_with_hole =
-            let applied_args = List.length left_args in
-            let diff = max_args - applied_args in
-            match diff with
-            | _ when diff > 0 ->
-              let* new_name = fresh "#make_closure" in
-              let* hole = expr_with_hole @@ ImmId new_name in
-              return
-                (ALet
-                   ( new_name
-                   , CMakeClosure (ImmId var, max_args, applied_args, List.rev left_args)
-                   , hole ))
-            | _ ->
-              let* new_name = fresh "#app" in
-              let* hole = expr_with_hole @@ ImmId new_name in
-              return (ALet (new_name, CApp (ImmId var, left_args), hole))
-          in
-          helper curr_args (count_args ty) expr_with_hole
-        | _ -> fail "Left opperand of application is not a variable"
+        | f ->
+          helper f (fun imm ->
+            let number_of_fun_args = Env.get env (get_f_name f) in
+            if number_of_fun_args <> 0 && List.length curr_args >= number_of_fun_args
+            then (
+              let to_app, to_closure = List.split_n curr_args number_of_fun_args in
+              construct_app
+                (fun next_imm ->
+                  closure_expr_with_hole expr_with_hole to_closure next_imm)
+                imm
+                to_app)
+            else closure_expr_with_hole expr_with_hole curr_args imm)
       in
       app_helper [] application
     | LLetIn ((name, _), e1, e2) ->
@@ -76,7 +106,7 @@ let anf e expr_with_hole =
         | hd :: tl -> helper hd (fun imm -> tuple_helper (imm :: l) tl)
         | _ ->
           let* hole = expr_with_hole (ImmId new_name) in
-          return (ALet (new_name, CImmExpr (ImmTuple (List.rev l)), hole))
+          return (ALet (new_name, CTuple (List.rev l), hole))
       in
       tuple_helper [] elems
     | LTake (lexpr, n) ->
@@ -89,7 +119,7 @@ let anf e expr_with_hole =
 ;;
 
 (* Performs transformation from llbinding to anfexpr *)
-let anf_binding = function
+let anf_binding env = function
   | (LLet ((name, _), args, expr) | LLetRec ((name, _), args, expr)) as binding ->
     let binding_to_anf_expr = function
       | LLet _ ->
@@ -101,11 +131,20 @@ let anf_binding = function
     in
     let constructor = binding_to_anf_expr binding in
     let args = List.map ~f:fst args in
-    let* aexpr = anf expr (fun imm -> return (ACEexpr (CImmExpr imm))) in
-    return @@ constructor name args aexpr
+    let env = Env.add env name (List.length args) in
+    let* aexpr = anf env expr (fun imm -> return (ACEexpr (CImmExpr imm))) in
+    return @@ (env, constructor name args aexpr)
 ;;
 
 (* Performs transformation from Toplevel.llstatements to Anf.anfstatements *)
 let anf lstatements =
-  run @@ monad_map ~f:(fun lbinding -> anf_binding lbinding) lstatements
+  List.rev
+  @@ snd
+  @@ run
+  @@ monad_fold
+       ~init:(Env.empty, [])
+       ~f:(fun (env, stmts) lbinding ->
+         let* env, stmt = anf_binding env lbinding in
+         return @@ (env, stmt :: stmts))
+       lstatements
 ;;
