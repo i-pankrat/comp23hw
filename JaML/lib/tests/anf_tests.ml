@@ -369,3 +369,17 @@ let%expect_test _ =
         let #closure22 = #app21 in #closure22
  |}]
 ;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+      let test x y z = (if x > 1 then (if y > 0 then 1 else 2) else (if z > 0 then 3 else 4))
+      |}
+    in
+    run_anf_tests e
+  in
+  [%expect {|
+
+ |}]
+;;

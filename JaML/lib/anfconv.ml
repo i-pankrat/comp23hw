@@ -97,9 +97,11 @@ let anf env e expr_with_hole =
         return (ALet (name, CImmExpr immval, aexpr)))
     | LIfThenElse (i, t, e, _) ->
       helper i (fun immif ->
-        let* athen = helper t (fun immthen -> expr_with_hole immthen) in
-        let* aelse = helper e (fun immelse -> expr_with_hole immelse) in
-        return (AIfThenElse (CImmExpr immif, athen, aelse)))
+        let* athen = helper t (fun immthen -> return @@ ACEexpr (CImmExpr immthen)) in
+        let* aelse = helper e (fun immelse -> return @@ ACEexpr (CImmExpr immelse)) in
+        let* new_name = fresh "#if" in
+        let* hole = expr_with_hole @@ ImmId new_name in
+        return @@ ALet (new_name, CIfThenElse (immif, athen, aelse), hole))
     | LTuple (elems, _) ->
       let* new_name = fresh "#tuple" in
       let rec tuple_helper l = function

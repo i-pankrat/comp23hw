@@ -22,7 +22,15 @@ let pp_immexpr ppf = function
   | ImmId s -> fprintf ppf "%s" s
 ;;
 
-let pp_cexpr ppf =
+let rec pp_aexpr tabs ppf =
+  let helper = pp_aexpr 1 in
+  function
+  | ALet (name, cexpr, aexpr) ->
+    fprintf ppf "%alet %a = %a in %a" space tabs pp_name name pp_cexpr cexpr helper aexpr
+  | ACEexpr cexpr -> fprintf ppf "%a" pp_cexpr cexpr
+
+and pp_cexpr ppf =
+  let pp_aexpr = pp_aexpr 1 in
   let pp_args = pp_args pp_immexpr in
   function
   | CBinOp (op, l, r) ->
@@ -33,40 +41,20 @@ let pp_cexpr ppf =
   | CMakeClosure (imm, arg) ->
     fprintf ppf "make_closure(%a, %a)" pp_immexpr imm pp_immexpr arg
   | CTuple elems -> pp_tuple ppf pp_immexpr elems
-;;
-
-let pp_aexpr =
-  let rec helper tabs ppf =
-    let helper = helper tabs in
-    function
-    | ALet (name, cexpr, aexpr) ->
-      fprintf
-        ppf
-        "%alet %a = %a in %a"
-        space
-        tabs
-        pp_name
-        name
-        pp_cexpr
-        cexpr
-        helper
-        aexpr
-    | AIfThenElse (if_aexpr, then_aexpr, else_aexpr) ->
-      fprintf
-        ppf
-        "if %a then %a else %a"
-        pp_cexpr
-        if_aexpr
-        helper
-        then_aexpr
-        helper
-        else_aexpr
-    | ACEexpr cexpr -> fprintf ppf "%a" pp_cexpr cexpr
-  in
-  helper 1
+  | CIfThenElse (if_aexpr, then_aexpr, else_aexpr) ->
+    fprintf
+      ppf
+      "(if %a then %a else %a)"
+      pp_immexpr
+      if_aexpr
+      pp_aexpr
+      then_aexpr
+      pp_aexpr
+      else_aexpr
 ;;
 
 let pp_anfexpr ppf =
+  let pp_aexpr = pp_aexpr 1 in
   let pp_args = pp_args (fun x -> fprintf x "%s") in
   function
   | AnfLetVar (name, aexpr) -> fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr

@@ -12,12 +12,12 @@ type cexpr =
   | CApp of immexpr * immexpr list (** Apply function to its arguments *)
   | CTuple of immexpr list (** (1, 2, a, b) *)
   | CTake of immexpr * int (** Take(tuple, 0) *)
-  | CMakeClosure of immexpr * immexpr
+  | CMakeClosure of immexpr * immexpr (** Used in partial application *)
+  | CIfThenElse of immexpr * aexpr * aexpr (** if immexpr then aexpr2 else aexpr3 *)
   | CImmExpr of immexpr (** immexpr *)
 
-type aexpr =
+and aexpr =
   | ALet of string * cexpr * aexpr (** let name = cexpr in aexpr *)
-  | AIfThenElse of cexpr * aexpr * aexpr (** if aexpr1 then aexpr2 else aexpe3 *)
   | ACEexpr of cexpr (** cexpr *)
 
 (** Anf binding type (top level declarations) *)
