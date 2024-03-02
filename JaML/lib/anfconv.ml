@@ -3,7 +3,7 @@
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
 open Anf
-open Toplevel
+open LL_ast
 open Ast
 open Base
 open Monads.ResultStateMonad
