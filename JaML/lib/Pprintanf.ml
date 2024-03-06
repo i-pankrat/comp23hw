@@ -20,8 +20,6 @@ let pp_immexpr ppf = function
   | ImmNum i -> fprintf ppf "%d" i
   | ImmBool b -> fprintf ppf "%B" b
   | ImmId s -> fprintf ppf "%s" s
-  | ImmVariable s -> fprintf ppf "var(%s)" s
-  | PassFunctionAsArgument f -> fprintf ppf "func(%s)" f
 ;;
 
 let rec pp_aexpr tabs ppf =
@@ -37,12 +35,15 @@ and pp_cexpr ppf =
   function
   | CBinOp (op, l, r) ->
     fprintf ppf "(%a %a %a)" pp_immexpr l Ast.pp_bin_op op pp_immexpr r
-  | CApp (func, args) -> fprintf ppf "%a %a" pp_immexpr func pp_args args
+  | CApp (func, args) ->
+    if Base.List.is_empty args
+    then fprintf ppf "empty_app(%a)" pp_immexpr func
+    else fprintf ppf "%a %a" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
   | CMakeClosure (imm, args) ->
     if Base.List.is_empty args
-    then fprintf ppf "make_closure(%a)" pp_immexpr imm
+    then fprintf ppf "make_empty_closure(%a)" pp_immexpr imm
     else fprintf ppf "make_closure(%a %a)" pp_immexpr imm pp_args args
   | CAddArgsToClosure (imm, args) ->
     fprintf ppf "add_args_to_closure(%a %a)" pp_immexpr imm pp_args args
@@ -58,8 +59,6 @@ and pp_cexpr ppf =
       pp_aexpr
       else_aexpr
 ;;
-
-(* | CEmptyClosure cl -> fprintf ppf "empty_closure(%a)" pp_immexpr cl *)
 
 let pp_anfexpr ppf (AnfLetFun (name, args, aexpr)) =
   let pp_aexpr = pp_aexpr 1 in

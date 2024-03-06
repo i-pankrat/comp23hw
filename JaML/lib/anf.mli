@@ -6,8 +6,6 @@ type immexpr =
   | ImmNum of int (** ..., -1, 0, 1, ... *)
   | ImmBool of bool (** true, false *)
   | ImmId of string (** identifiers or variables *)
-  | ImmVariable of string (** Represents global variables: let ImmVariable = 2 *)
-  | PassFunctionAsArgument of string (** Represent function passed as a argument *)
 
 type cexpr =
   | CBinOp of Ast.bin_op * immexpr * immexpr (** Binary operation *)

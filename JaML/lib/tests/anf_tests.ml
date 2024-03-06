@@ -92,12 +92,14 @@ let%expect_test _ =
     {|
     let fact n acc =
         let #binop1 = (n < 1) in
-        let #if5 = (if #binop1 then acc else
+        let #if6 = (if #binop1 then acc else
         let #binop2 = (n * acc) in
         let #binop3 = (n - 1) in
-        let #app4 = fact #binop3 #binop2 in #app4) in #if5;
+        let #empty_closure4 = make_empty_closure(fact) in
+        let #closure5 = add_args_to_closure(#empty_closure4 #binop3 #binop2) in #closure5) in #if6;
     let fac_tailrec n =
-        let #app6 = fact n 1 in #app6
+        let #empty_closure7 = make_empty_closure(fact) in
+        let #closure8 = add_args_to_closure(#empty_closure7 n 1) in #closure8
   |}]
 ;;
 
@@ -127,13 +129,16 @@ let%expect_test _ =
         let #binop4 = (3 + 1) in
         let #tuple1 = (#tuple2, #binop4) in #tuple1;
     let x =
-        let #take5 = take(#tuple_out1, 0) in
-        let #take6 = take(#take5, 0) in #take6;
+        let #global_var5 = empty_app(#tuple_out1) in
+        let #take6 = take(#global_var5, 0) in
+        let #take7 = take(#take6, 0) in #take7;
     let s =
-        let #take7 = take(#tuple_out1, 0) in
-        let #take8 = take(#take7, 1) in #take8;
+        let #global_var8 = empty_app(#tuple_out1) in
+        let #take9 = take(#global_var8, 0) in
+        let #take10 = take(#take9, 1) in #take10;
     let y =
-        let #take9 = take(#tuple_out1, 1) in #take9 |}]
+        let #global_var11 = empty_app(#tuple_out1) in
+        let #take12 = take(#global_var11, 1) in #take12 |}]
 ;;
 
 let%expect_test _ =
@@ -156,9 +161,13 @@ let%expect_test _ =
     let sum a b =
         let #binop2 = (a + b) in #binop2;
     let x =
-        let #app4 = apply2 func(sum) 3 4 in
-        let #app5 = apply2 func(sum) 1 2 in
-        let #tuple3 = (#app4, #app5) in #tuple3
+        let #empty_closure4 = make_empty_closure(sum) in
+        let #empty_closure5 = make_empty_closure(apply2) in
+        let #closure6 = add_args_to_closure(#empty_closure5 #empty_closure4 3 4) in
+        let #empty_closure7 = make_empty_closure(sum) in
+        let #empty_closure8 = make_empty_closure(apply2) in
+        let #closure9 = add_args_to_closure(#empty_closure8 #empty_closure7 1 2) in
+        let #tuple3 = (#closure6, #closure9) in #tuple3
  |}]
 ;;
 
@@ -200,7 +209,8 @@ let%expect_test _ =
         let #binop2 = (#binop1 + e) in
         let #binop3 = (#binop2 + f) in #binop3;
     let partial =
-        let #app4 = sum 1 2 3 4 5 6 in #app4
+        let #empty_closure4 = make_empty_closure(sum) in
+        let #closure5 = add_args_to_closure(#empty_closure4 1 2 3 4 5 6) in #closure5
  |}]
 ;;
 
@@ -225,12 +235,14 @@ let%expect_test _ =
         let #binop4 = (#binop3 + e) in
         let #binop5 = (#binop4 + f) in #binop5;
     let sum4 a b c d =
-        let #closure6 = make_closure(sum6 a b c d) in #closure6;
+        let #empty_closure6 = make_empty_closure(sum6) in
+        let #closure7 = add_args_to_closure(#empty_closure6 a b c d) in #closure7;
     let sum2 a b =
-        let #closure7 = make_closure(sum4 a b) in #closure7;
+        let #empty_closure8 = make_empty_closure(sum4) in
+        let #closure9 = add_args_to_closure(#empty_closure8 a b) in #closure9;
     let rer =
-        let #app8 = sum2 1 2 in
-        let #closure9 = add_args_to_closure(#app8 3 4 5 6) in #closure9
+        let #empty_closure10 = make_empty_closure(sum2) in
+        let #closure11 = add_args_to_closure(#empty_closure10 1 2 3 4 5 6) in #closure11
  |}]
 ;;
 
@@ -284,13 +296,17 @@ let%expect_test _ =
     let #closure_fun2 x = x;
     let fack n k =
         let #binop3 = (n <= 1) in
-        let #if8 = (if #binop3 then
+        let #if10 = (if #binop3 then
         let #closure4 = add_args_to_closure(k 1) in #closure4 else
-        let #closure5 = make_closure(#closure_fun1 k n) in
-        let #binop6 = (n - 1) in
-        let #app7 = fack #binop6 #closure5 in #app7) in #if8;
+        let #empty_closure5 = make_empty_closure(#closure_fun1) in
+        let #closure6 = add_args_to_closure(#empty_closure5 k n) in
+        let #binop7 = (n - 1) in
+        let #empty_closure8 = make_empty_closure(fack) in
+        let #closure9 = add_args_to_closure(#empty_closure8 #binop7 #closure6) in #closure9) in #if10;
     let fac n =
-        let #app9 = fack n func(#closure_fun2) in #app9
+        let #empty_closure11 = make_empty_closure(#closure_fun2) in
+        let #empty_closure12 = make_empty_closure(fack) in
+        let #closure13 = add_args_to_closure(#empty_closure12 n #empty_closure11) in #closure13
  |}]
 ;;
 
@@ -314,19 +330,25 @@ let%expect_test _ =
         let #binop1 = (x + y) in
         let #closure2 = add_args_to_closure(acc #binop1) in #closure2;
     let #closure_fun2 n fibo_cps acc x =
-        let #closure3 = make_closure(#closure_fun1 x acc) in
-        let #binop4 = (n - 2) in
-        let #closure5 = add_args_to_closure(fibo_cps #binop4 #closure3) in #closure5;
+        let #empty_closure3 = make_empty_closure(#closure_fun1) in
+        let #closure4 = add_args_to_closure(#empty_closure3 x acc) in
+        let #binop5 = (n - 2) in
+        let #closure6 = add_args_to_closure(fibo_cps #binop5 #closure4) in #closure6;
     let #closure_fun3 x = x;
     let fibo_cps n acc =
-        let #binop6 = (n < 3) in
-        let #if11 = (if #binop6 then
-        let #closure7 = add_args_to_closure(acc 1) in #closure7 else
-        let #closure8 = make_closure(#closure_fun2 n func(fibo_cps) acc) in
-        let #binop9 = (n - 1) in
-        let #app10 = fibo_cps #binop9 #closure8 in #app10) in #if11;
+        let #binop7 = (n < 3) in
+        let #if15 = (if #binop7 then
+        let #closure8 = add_args_to_closure(acc 1) in #closure8 else
+        let #empty_closure9 = make_empty_closure(fibo_cps) in
+        let #empty_closure10 = make_empty_closure(#closure_fun2) in
+        let #closure11 = add_args_to_closure(#empty_closure10 n #empty_closure9 acc) in
+        let #binop12 = (n - 1) in
+        let #empty_closure13 = make_empty_closure(fibo_cps) in
+        let #closure14 = add_args_to_closure(#empty_closure13 #binop12 #closure11) in #closure14) in #if15;
     let fibo n =
-        let #app12 = fibo_cps n func(#closure_fun3) in #app12
+        let #empty_closure16 = make_empty_closure(#closure_fun3) in
+        let #empty_closure17 = make_empty_closure(fibo_cps) in
+        let #closure18 = add_args_to_closure(#empty_closure17 n #empty_closure16) in #closure18
  |}]
 ;;
 
@@ -378,28 +400,39 @@ let%expect_test _ =
         let #binop1 = (a + b) in #binop1;
     let minus a b =
         let #binop2 = (a - b) in #binop2;
-    let test1 = make_closure(sum);
+    let test1 =
+        let #empty_closure3 = make_empty_closure(sum) in #empty_closure3;
     let test1_res =
-        let #closure3 = add_args_to_closure(test1 1 2) in #closure3;
+        let #global_var4 = empty_app(test1) in
+        let #closure5 = add_args_to_closure(#global_var4 1 2) in #closure5;
     let test2 =
-        let x = 1 in make_closure(sum);
+        let x = 1 in
+        let #empty_closure6 = make_empty_closure(sum) in #empty_closure6;
     let test2_res =
-        let #closure4 = add_args_to_closure(test2 1 2) in #closure4;
+        let #global_var7 = empty_app(test2) in
+        let #closure8 = add_args_to_closure(#global_var7 1 2) in #closure8;
     let test3 a =
-        let #binop5 = (a = 1) in
-        let #if6 = (if #binop5 then make_closure(sum) else make_closure(minus)) in #if6;
+        let #binop9 = (a = 1) in
+        let #if12 = (if #binop9 then
+        let #empty_closure10 = make_empty_closure(sum) in #empty_closure10 else
+        let #empty_closure11 = make_empty_closure(minus) in #empty_closure11) in #if12;
     let test3_res =
-        let #app7 = test3 0 in
-        let #closure8 = add_args_to_closure(#app7 3 4) in #closure8;
+        let #empty_closure13 = make_empty_closure(test3) in
+        let #closure14 = add_args_to_closure(#empty_closure13 0 3 4) in #closure14;
     let a = 5;
-    let b = var(a);
+    let b =
+        let #global_var15 = empty_app(a) in #global_var15;
     let c =
-        let #binop9 = (5 + var(a)) in
-        let #binop10 = (#binop9 + var(b)) in #binop10;
+        let #global_var16 = empty_app(a) in
+        let #binop17 = (5 + #global_var16) in
+        let #global_var18 = empty_app(b) in
+        let #binop19 = (#binop17 + #global_var18) in #binop19;
     let sum4 arg =
-        let #binop11 = (arg + var(a)) in
-        let #binop12 = (#binop11 + var(b)) in
-        let #binop13 = (#binop12 + 1) in #binop13
+        let #global_var20 = empty_app(a) in
+        let #binop21 = (arg + #global_var20) in
+        let #global_var22 = empty_app(b) in
+        let #binop23 = (#binop21 + #global_var22) in
+        let #binop24 = (#binop23 + 1) in #binop24
 
 
 

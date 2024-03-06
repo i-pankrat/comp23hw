@@ -57,16 +57,16 @@ let const_to_immexpr = function
 ;;
 
 module Env : sig
-  type argsEnv
+  type args_env
 
-  val add : argsEnv -> string -> int -> argsEnv
-  val get_opt : argsEnv -> string -> int option
-  val get : argsEnv -> string -> int
-  val empty : argsEnv
+  val add : args_env -> string -> int -> args_env
+  val get_opt : args_env -> string -> int option
+  val get : args_env -> string -> int
+  val empty : args_env
 end = struct
   module E = Stdlib.Map.Make (String)
 
-  type argsEnv = int E.t
+  type args_env = int E.t
 
   let add env f n_arg = E.add f n_arg env
   let get_opt env f = E.find_opt f env
@@ -80,42 +80,6 @@ end = struct
   let empty = E.empty
 end
 
-(*
-   Converts llexpr to aexpr
-   Argument expr_with_hole helps to create anf tree in cps
-*)
-
-let is_top_declaration env = function
-  | LVar (var, _) ->
-    (match Env.get_opt env var with
-     | Some args_n -> Some (var, args_n)
-     | _ -> None)
-  | _ -> None
-;;
-
-let check_cexpr_is_top_declaration env e immval =
-  match is_top_declaration env e with
-  | Some (var, 0) -> CImmExpr (ImmVariable var)
-  | Some _ -> CMakeClosure (immval, [])
-  | _ -> CImmExpr immval
-;;
-
-let check_aexpr_is_top_declaration env e aexpr =
-  match is_top_declaration env e with
-  | Some (var, 0) -> ACEexpr (CImmExpr (ImmVariable var))
-  | Some (var, _) -> ACEexpr (CMakeClosure (ImmId var, []))
-  | _ -> aexpr
-;;
-
-let check_immexpr_is_top_level_var env imm =
-  match imm with
-  | ImmId var ->
-    (match Env.get_opt env var with
-     | Some 0 -> ImmVariable var
-     | _ -> imm)
-  | _ -> imm
-;;
-
 let is_imm_top_declaration env = function
   | ImmId var ->
     (match Env.get_opt env var with
@@ -124,28 +88,39 @@ let is_imm_top_declaration env = function
   | _ -> None
 ;;
 
-let process_arg env i =
-  match i with
-  | ImmId var ->
-    (match Env.get_opt env var with
-     | Some 0 -> ImmVariable var
-     | Some _ -> PassFunctionAsArgument var
-     | _ -> i)
-  | _ -> i
+let get_lvar_name = function
+  | LVar (name, _) -> Some name
+  | _ -> None
 ;;
 
+(*
+   Converts llexpr to aexpr
+   Argument expr_with_hole helps to create anf tree in cps
+*)
 let anf env e expr_with_hole =
   let rec helper (e : llexpr) (expr_with_hole : immexpr -> aexpr t) =
     match e with
     | LConst (const, _) -> expr_with_hole (const_to_immexpr const)
-    | LVar (name, _) -> expr_with_hole (ImmId name)
+    | LVar (name, _) ->
+      (match Env.get_opt env name with
+       | Some 0 ->
+         let* gl_name = fresh "#global_var" in
+         let gl_immid = ImmId gl_name in
+         let immid = ImmId name in
+         let* hole = expr_with_hole gl_immid in
+         return (ALet (gl_name, CApp (immid, []), hole))
+       | Some _ ->
+         let* cl_name = fresh "#empty_closure" in
+         let cl_immid = ImmId cl_name in
+         let immid = ImmId name in
+         let* hole = expr_with_hole cl_immid in
+         return (ALet (cl_name, CMakeClosure (immid, []), hole))
+       | _ -> expr_with_hole (ImmId name))
     | LBinop ((op, _), e1, e2) ->
       helper e1 (fun limm ->
         helper e2 (fun rimm ->
           let* new_name = fresh "#binop" in
           let* hole = expr_with_hole @@ ImmId new_name in
-          let limm = check_immexpr_is_top_level_var env limm in
-          let rimm = check_immexpr_is_top_level_var env rimm in
           return (ALet (new_name, CBinOp (op, limm, rimm), hole))))
     | LApp _ as application ->
       let construct_app expr_with_hole imm args =
@@ -179,7 +154,6 @@ let anf env e expr_with_hole =
         | LApp (a, b, _) -> helper b (fun imm -> app_helper (imm :: curr_args) a)
         | f ->
           helper f (fun imm ->
-            let curr_args = List.map ~f:(process_arg env) curr_args in
             match is_imm_top_declaration env imm with
             | None ->
               (* Not top-level declaration. Expect that it's closure *)
@@ -189,10 +163,12 @@ let anf env e expr_with_hole =
                  We expect that the top level declaration is closure. *)
               construct_add_args_to_closure expr_with_hole imm curr_args
             | Some (_, n) ->
-              if n == List.length curr_args
-              then
+              if n = List.length curr_args
+              then (
                 (* If we can apply all arguments to a top level declaration, we do it. *)
-                construct_app expr_with_hole imm curr_args
+                match get_lvar_name f with
+                | Some x -> construct_app expr_with_hole (ImmId x) curr_args
+                | _ -> construct_app expr_with_hole imm curr_args)
               else if List.length curr_args < n
               then
                 (* Top level declaration need more arguments. Create a closure for now.*)
@@ -208,15 +184,11 @@ let anf env e expr_with_hole =
     | LLetIn ((name, _), e1, e2) ->
       helper e1 (fun immval ->
         let* aexpr = helper e2 expr_with_hole in
-        let cimmval = check_cexpr_is_top_declaration env e1 immval in
-        let aexpr = check_aexpr_is_top_declaration env e2 aexpr in
-        return (ALet (name, cimmval, aexpr)))
+        return (ALet (name, CImmExpr immval, aexpr)))
     | LIfThenElse (i, t, e, _) ->
       helper i (fun immif ->
         let* athen = helper t (fun immthen -> return @@ ACEexpr (CImmExpr immthen)) in
-        let athen = check_aexpr_is_top_declaration env t athen in
         let* aelse = helper e (fun immelse -> return @@ ACEexpr (CImmExpr immelse)) in
-        let aelse = check_aexpr_is_top_declaration env e aelse in
         let* new_name = fresh "#if" in
         let* hole = expr_with_hole @@ ImmId new_name in
         return @@ ALet (new_name, CIfThenElse (immif, athen, aelse), hole))
@@ -241,14 +213,11 @@ let anf env e expr_with_hole =
 (* Performs transformation from llbinding to anfexpr *)
 let anf_binding env = function
   | LLet ((name, _), args, expr) | LLetRec ((name, _), args, expr) ->
-    let constructor name args aexpr =
-      let aexpr = check_aexpr_is_top_declaration env expr aexpr in
-      AnfLetFun (name, args, aexpr)
-    in
+    let constructor name args aexpr = AnfLetFun (name, args, aexpr) in
     let args = List.map ~f:fst args in
     let env = Env.add env name (List.length args) in
     let* aexpr = anf env expr (fun imm -> return (ACEexpr (CImmExpr imm))) in
-    return @@ (env, constructor name args aexpr)
+    return (env, constructor name args aexpr)
 ;;
 
 (* Performs transformation from Toplevel.llstatements to Anf.anfstatements *)
@@ -260,6 +229,6 @@ let anf lstatements =
        ~init:(Env.empty, [])
        ~f:(fun (env, stmts) lbinding ->
          let* env, stmt = anf_binding env lbinding in
-         return @@ (env, stmt :: stmts))
+         return (env, stmt :: stmts))
        lstatements
 ;;
