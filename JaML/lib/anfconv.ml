@@ -8,6 +8,48 @@ open Ast
 open Base
 open Monads.VariableNameGeneratorMonad
 
+(*
+   Some thoughts about anf conversion.
+
+   Let a top-level declaration be called the following:
+   let f ... = ....
+   let f = ...
+   In this case f is a top-level declaration.
+
+   Let the following constructs be called any level declaration:
+   let f ... = ...
+   let f = ...
+   let ... =
+   let f = ... in
+
+   In all such cases, f is a declaration at any level.
+
+   All top-level declarations without arguments are considered functions, which
+   require 0 arguments to be passed to call them.
+
+   Working with functions adheres to the following rules:
+   1. If a top-level declaration with more than zero arguments is returned from
+   any level declaration, that top-level declaration is turned into a closure to
+   which zero arguments are applied.
+   2. If a top-level declaration with zero arguments is returned from any level declaration,
+   then that top-level declaration is considered a function to which zero arguments should be
+   applied, and it is immediately called, and then we return the result of that application
+   from the declaration.
+   4. If the top-level declaration represents a higher-order function, it expects any function
+   passed to it to be represented by a closure.
+   3. If we pass a top-level declaration to a top-level declaration, the caller must
+   turn the top-level declaration into a closure to which zero arguments are applied.
+   4. If fewer arguments than expected are applied to the top-level declaration, then
+   a closure is created from that top-level declaration to which the passed number of
+   arguments is applied.
+   5. If exactly as many arguments are applied to the top-level declaration as it expects,
+   then an application of all arguments to the top-level declaration is called.
+   6. If more arguments are applied to the top-level declaration than it expects, we first
+   call the application with the arguments that the top-level declaration expects, and then
+   apply the arguments to the result using AddArgsToClosure, since we expect the result to
+   return a closure.
+*)
+
 (* Simply convert type from const to immexpr *)
 let const_to_immexpr = function
   | CInt i -> ImmNum i
@@ -132,21 +174,34 @@ let anf env e expr_with_hole =
              , app
              , ALet (new_closure, CAddArgsToClosure (ImmId new_app, cl_args), hole) ))
       in
+      (* app_helper is used for collecting all arguments at the application *)
       let rec app_helper curr_args = function
         | LApp (a, b, _) -> helper b (fun imm -> app_helper (imm :: curr_args) a)
         | f ->
           helper f (fun imm ->
             let curr_args = List.map ~f:(process_arg env) curr_args in
             match is_imm_top_declaration env imm with
-            | None -> construct_add_args_to_closure expr_with_hole imm curr_args
-            | Some (_, 0) -> construct_add_args_to_closure expr_with_hole imm curr_args
+            | None ->
+              (* Not top-level declaration. Expect that it's closure *)
+              construct_add_args_to_closure expr_with_hole imm curr_args
+            | Some (_, 0) ->
+              (* It's top level declaration, that takes zero arguments.
+                 We expect that the top level declaration is closure. *)
+              construct_add_args_to_closure expr_with_hole imm curr_args
             | Some (_, n) ->
               if n == List.length curr_args
-              then construct_app expr_with_hole imm curr_args
+              then
+                (* If we can apply all arguments to a top level declaration, we do it. *)
+                construct_app expr_with_hole imm curr_args
               else if List.length curr_args < n
-              then construct_closure expr_with_hole imm curr_args
+              then
+                (* Top level declaration need more arguments. Create a closure for now.*)
+                construct_closure expr_with_hole imm curr_args
               else (
                 let app_args, closure_args = List.split_n curr_args n in
+                (* Apply all arguments that we can to the top level declarations.
+                   We expect that return value will be closure. So then we add all arguments to the closure.
+                *)
                 construct_app_add_args_to_closure expr_with_hole imm app_args closure_args))
       in
       app_helper [] application
