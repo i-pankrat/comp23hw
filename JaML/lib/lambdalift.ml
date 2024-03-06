@@ -107,14 +107,16 @@ let dispose_of_pattern pat_lst lst counter var =
 
 let rec get_args_let (known, expr_with_hole) = function
   | TFun (TPVar (id, ty), expr, _) ->
-    get_args_let ((id, ty) :: known, expr_with_hole) expr
+    get_args_let (Used (id, ty) :: known, expr_with_hole) expr
   | TFun (TPTuple (pat_lst, ty), expr, _) ->
     let* new_id = fresh "#tuple_arg" in
     let take_constr = LVar (new_id, ty) in
     let expr_with_hole, _, _, _ =
       dispose_of_tuple_in pat_lst expr_with_hole take_constr take_constr
     in
-    get_args_let ((new_id, ty) :: known, expr_with_hole) expr
+    get_args_let (Used (new_id, ty) :: known, expr_with_hole) expr
+  | TFun (TPWildcard ty, expr, _) ->
+    get_args_let (Unused ty :: known, expr_with_hole) expr
   | _ -> return (known, expr_with_hole)
 ;;
 
