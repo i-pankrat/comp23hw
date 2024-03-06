@@ -62,7 +62,12 @@ and pp_cexpr ppf =
 
 let pp_anfexpr ppf (AnfLetFun (name, args, aexpr)) =
   let pp_aexpr = pp_aexpr 1 in
-  let pp_args = pp_args (fun x -> fprintf x "%s") in
+  let pp_args =
+    pp_args (fun ppf x ->
+      match x with
+      | Anf.Used s -> fprintf ppf "%s" s
+      | _ -> fprintf ppf "_")
+  in
   if Base.List.is_empty args
   then fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr
   else fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_aexpr aexpr

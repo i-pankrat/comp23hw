@@ -52,7 +52,10 @@ let pp_llexpt_wt =
   helper 1
 ;;
 
-let pp_args ppf (name, _) = fprintf ppf "%s" name
+let pp_args ppf = function
+  | Used (name, _) -> fprintf ppf "%s" name
+  | Unused _ -> fprintf ppf "_"
+;;
 
 let pp_args =
   pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf " ") (fun ppf arg -> pp_args ppf arg)

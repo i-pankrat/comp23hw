@@ -214,7 +214,14 @@ let anf env e expr_with_hole =
 let anf_binding env = function
   | LLet ((name, _), args, expr) | LLetRec ((name, _), args, expr) ->
     let constructor name args aexpr = AnfLetFun (name, args, aexpr) in
-    let args = List.map ~f:fst args in
+    let args =
+      List.map
+        ~f:(fun arg ->
+          match arg with
+          | Used (s, _) -> Anf.Used s
+          | _ -> Anf.Unused)
+        args
+    in
     let env = Env.add env name (List.length args) in
     let* aexpr = anf env expr (fun imm -> return (ACEexpr (CImmExpr imm))) in
     return (env, constructor name args aexpr)

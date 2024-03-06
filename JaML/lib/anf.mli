@@ -2,6 +2,10 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
+type arg =
+  | Used of string
+  | Unused
+
 type immexpr =
   | ImmNum of int (** ..., -1, 0, 1, ... *)
   | ImmBool of bool (** true, false *)
@@ -23,7 +27,7 @@ and aexpr =
 
 (** Anf binding type (top level declarations) *)
 type anfexpr =
-  | AnfLetFun of string * string list * aexpr
+  | AnfLetFun of string * arg list * aexpr
   (** let name arg1, arg2, ..., argn = aexpr. It's possible to have zero args *)
 
 (** Statements type (list of top level declarations) *)
