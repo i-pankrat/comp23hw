@@ -320,7 +320,7 @@ let pp_texpt_wt =
     | TBinop ((binop, _), ltexpr, rtexpr) ->
       fprintf ppf "(%a %a %a)" helper ltexpr Ast.pp_bin_op binop helper rtexpr
     | TApp (fun_texpr, arg_texpr, _) ->
-      fprintf ppf "%a %a" helper fun_texpr helper arg_texpr
+      fprintf ppf "(%a %a)" helper fun_texpr helper arg_texpr
     | TIfThenElse (cond_texpr, then_texpr, else_texpr, _) ->
       fprintf
         ppf

@@ -179,7 +179,7 @@ and closure_expr env known = function
       let constr_new_let e2 = TLetIn (TPVar (new_id, ty), e1, e2) in
       extend_env new_id (diff, ty, Some constr_new_let) env
     in
-    let expr, _ = put_diff_app diff (TVar (new_id, ty), ty2) in
+    let expr, _ = put_diff_app (List.rev diff) (TVar (new_id, ty), ty2) in
     return (expr, known, env)
   | TApp (fst, scd, ty) ->
     let* fst, known, env = closure_expr env known fst in

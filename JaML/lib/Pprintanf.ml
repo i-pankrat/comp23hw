@@ -20,6 +20,8 @@ let pp_immexpr ppf = function
   | ImmNum i -> fprintf ppf "%d" i
   | ImmBool b -> fprintf ppf "%B" b
   | ImmId s -> fprintf ppf "%s" s
+  | ImmVariable s -> fprintf ppf "var(%s)" s
+  | PassFunctionAsArgument f -> fprintf ppf "func(%s)" f
 ;;
 
 let rec pp_aexpr tabs ppf =
@@ -38,8 +40,12 @@ and pp_cexpr ppf =
   | CApp (func, args) -> fprintf ppf "%a %a" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
-  | CMakeClosure (imm, arg) ->
-    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm pp_immexpr arg
+  | CMakeClosure (imm, args) ->
+    if Base.List.is_empty args
+    then fprintf ppf "make_closure(%a)" pp_immexpr imm
+    else fprintf ppf "make_closure(%a %a)" pp_immexpr imm pp_args args
+  | CAddArgsToClosure (imm, args) ->
+    fprintf ppf "add_args_to_closure(%a %a)" pp_immexpr imm pp_args args
   | CTuple elems -> pp_tuple ppf pp_immexpr elems
   | CIfThenElse (if_aexpr, then_aexpr, else_aexpr) ->
     fprintf
@@ -53,15 +59,14 @@ and pp_cexpr ppf =
       else_aexpr
 ;;
 
-let pp_anfexpr ppf =
+(* | CEmptyClosure cl -> fprintf ppf "empty_closure(%a)" pp_immexpr cl *)
+
+let pp_anfexpr ppf (AnfLetFun (name, args, aexpr)) =
   let pp_aexpr = pp_aexpr 1 in
   let pp_args = pp_args (fun x -> fprintf x "%s") in
-  function
-  | AnfLetVar (name, aexpr) -> fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr
-  | AnfLetFun (name, args, aexpr) ->
-    fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_aexpr aexpr
-  | AnfLetRec (name, args, aexpr) ->
-    fprintf ppf "let rec %a %a = %a" pp_name name pp_args args pp_aexpr aexpr
+  if Base.List.is_empty args
+  then fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr
+  else fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_aexpr aexpr
 ;;
 
 let pp_anfstatements =
