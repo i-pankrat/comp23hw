@@ -15,9 +15,10 @@ let run_anf_tests test_case =
     (match Inferencer.infer Inferencer.Enable commands with
      | Error err -> Inferencer.pp_error fmt err
      | Ok typed_commands ->
-       (match Closure.closure typed_commands |> Lambdalift.lambda_lift |> Anfconv.anf with
-        | Error err -> Format.printf "Anf error: %s%!" err
-        | Ok anfstatements -> Format.printf "%a" pp_anfstatements anfstatements))
+       Closure.closure typed_commands
+       |> Lambdalift.lambda_lift
+       |> Anfconv.anf
+       |> Format.printf "%a" pp_anfstatements)
 ;;
 
 let%expect_test _ =
@@ -53,9 +54,10 @@ let%expect_test _ =
     let e = "let test f x = f x 1" in
     run_anf_tests e
   in
-  [%expect {|
+  [%expect
+    {|
     let test f x =
-        let #app1 = (f x 1) in #app1
+        let #closure1 = add_args_to_closure(f x 1) in #closure1
  |}]
 ;;
 
@@ -67,11 +69,12 @@ let%expect_test _ =
   [%expect
     {|
     let test f x y =
-        let #app1 = (f 1 2) in if #app1 then
+        let #closure1 = add_args_to_closure(f 1 2) in
+        let #if6 = (if #closure1 then
         let #binop2 = (x + 1) in
         let #binop3 = (#binop2 + 3) in #binop3 else
         let #binop4 = (y + 4) in
-        let #binop5 = (#binop4 + 5) in #binop5
+        let #binop5 = (#binop4 + 5) in #binop5) in #if6
     |}]
 ;;
 
@@ -87,13 +90,14 @@ let%expect_test _ =
   in
   [%expect
     {|
-    let rec fact n acc =
-        let #binop1 = (n < 1) in if #binop1 then acc else
+    let fact n acc =
+        let #binop1 = (n < 1) in
+        let #if5 = (if #binop1 then acc else
         let #binop2 = (n * acc) in
         let #binop3 = (n - 1) in
-        let #app4 = (fact #binop3 #binop2) in #app4;
+        let #app4 = fact #binop3 #binop2 in #app4) in #if5;
     let fac_tailrec n =
-        let #app5 = (fact n 1) in #app5
+        let #app6 = fact n 1 in #app6
   |}]
 ;;
 
@@ -148,12 +152,12 @@ let%expect_test _ =
   [%expect
     {|
     let apply2 f fst snd =
-        let #app1 = (f fst snd) in #app1;
+        let #closure1 = add_args_to_closure(f fst snd) in #closure1;
     let sum a b =
         let #binop2 = (a + b) in #binop2;
     let x =
-        let #app4 = (apply2 sum 3 4) in
-        let #app5 = (apply2 sum 1 2) in
+        let #app4 = apply2 func(sum) 3 4 in
+        let #app5 = apply2 func(sum) 1 2 in
         let #tuple3 = (#app4, #app5) in #tuple3
  |}]
 ;;
@@ -173,9 +177,9 @@ let%expect_test _ =
         let #binop1 = (4 + 5) in
         let #binop2 = (2 + 0) in
         let #binop3 = (1 + 0) in
-        let #app4 = (f #binop3 #binop2) in
-        let #app5 = (f #app4 3) in
-        let #app6 = (f #app5 #binop1) in #app6
+        let #closure4 = add_args_to_closure(f #binop3 #binop2) in
+        let #closure5 = add_args_to_closure(f #closure4 3) in
+        let #closure6 = add_args_to_closure(f #closure5 #binop1) in #closure6
  |}]
 ;;
 
@@ -196,7 +200,7 @@ let%expect_test _ =
         let #binop2 = (#binop1 + e) in
         let #binop3 = (#binop2 + f) in #binop3;
     let partial =
-        let #app4 = (sum 1 2 3 4 5 6) in #app4
+        let #app4 = sum 1 2 3 4 5 6 in #app4
  |}]
 ;;
 
@@ -221,11 +225,12 @@ let%expect_test _ =
         let #binop4 = (#binop3 + e) in
         let #binop5 = (#binop4 + f) in #binop5;
     let sum4 a b c d =
-        let #make_closure6 = make_closure(sum6, d c b a) in #make_closure6;
+        let #closure6 = make_closure(sum6 a b c d) in #closure6;
     let sum2 a b =
-        let #make_closure7 = make_closure(sum4, b a) in #make_closure7;
+        let #closure7 = make_closure(sum4 a b) in #closure7;
     let rer =
-        let #app8 = (sum2 1 2 3 4 5 6) in #app8
+        let #app8 = sum2 1 2 in
+        let #closure9 = add_args_to_closure(#app8 3 4 5 6) in #closure9
  |}]
 ;;
 
@@ -275,16 +280,17 @@ let%expect_test _ =
     {|
     let #closure_fun1 k n m =
         let #binop1 = (m * n) in
-        let #app2 = (k #binop1) in #app2;
+        let #closure2 = add_args_to_closure(k #binop1) in #closure2;
     let #closure_fun2 x = x;
     let fack n k =
-        let #binop3 = (n <= 1) in if #binop3 then
-        let #app4 = (k 1) in #app4 else
-        let #make_closure5 = make_closure(#closure_fun1, n k) in
+        let #binop3 = (n <= 1) in
+        let #if8 = (if #binop3 then
+        let #closure4 = add_args_to_closure(k 1) in #closure4 else
+        let #closure5 = make_closure(#closure_fun1 k n) in
         let #binop6 = (n - 1) in
-        let #app7 = (fack #binop6 #make_closure5) in #app7;
+        let #app7 = fack #binop6 #closure5 in #app7) in #if8;
     let fac n =
-        let #app8 = (fack n #closure_fun2) in #app8
+        let #app9 = fack n func(#closure_fun2) in #app9
  |}]
 ;;
 
@@ -306,19 +312,96 @@ let%expect_test _ =
     {|
     let #closure_fun1 x acc y =
         let #binop1 = (x + y) in
-        let #app2 = (acc #binop1) in #app2;
+        let #closure2 = add_args_to_closure(acc #binop1) in #closure2;
     let #closure_fun2 n fibo_cps acc x =
-        let #make_closure3 = make_closure(#closure_fun1, x acc) in
+        let #closure3 = make_closure(#closure_fun1 x acc) in
         let #binop4 = (n - 2) in
-        let #app5 = (fibo_cps #binop4 #make_closure3) in #app5;
+        let #closure5 = add_args_to_closure(fibo_cps #binop4 #closure3) in #closure5;
     let #closure_fun3 x = x;
     let fibo_cps n acc =
-        let #binop6 = (n < 3) in if #binop6 then
-        let #app7 = (acc 1) in #app7 else
-        let #make_closure8 = make_closure(#closure_fun2, n fibo_cps acc) in
+        let #binop6 = (n < 3) in
+        let #if11 = (if #binop6 then
+        let #closure7 = add_args_to_closure(acc 1) in #closure7 else
+        let #closure8 = make_closure(#closure_fun2 n func(fibo_cps) acc) in
         let #binop9 = (n - 1) in
-        let #app10 = (fibo_cps #binop9 #make_closure8) in #app10;
+        let #app10 = fibo_cps #binop9 #closure8 in #app10) in #if11;
     let fibo n =
-        let #app11 = (fibo_cps n #closure_fun3) in #app11
+        let #app12 = fibo_cps n func(#closure_fun3) in #app12
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+      let test x y z = (if x > 1 then (if y > 0 then 1 else 2) else (if z > 0 then 3 else 4))
+      |}
+    in
+    run_anf_tests e
+  in
+  [%expect
+    {|
+    let test x y z =
+        let #binop1 = (x > 1) in
+        let #if6 = (if #binop1 then
+        let #binop2 = (y > 0) in
+        let #if3 = (if #binop2 then 1 else 2) in #if3 else
+        let #binop4 = (z > 0) in
+        let #if5 = (if #binop4 then 3 else 4) in #if5) in #if6
+
+ |}]
+;;
+
+let%expect_test _ =
+  let _ =
+    let e =
+      {|
+      let sum a b = a + b
+      let minus a b = a - b
+      let test1 = sum
+      let test1_res = test1 1 2
+      let test2 = let x = 1 in sum
+      let test2_res = test2 1 2
+      let test3 a = if a = 1 then sum else minus
+      let test3_res = test3 0 3 4
+      let a = 5
+      let b = a
+      let c = 5 + a + b
+      let sum4 arg = arg + a + b + 1 
+      |}
+    in
+    run_anf_tests e
+  in
+  [%expect
+    {|
+    let sum a b =
+        let #binop1 = (a + b) in #binop1;
+    let minus a b =
+        let #binop2 = (a - b) in #binop2;
+    let test1 = make_closure(sum);
+    let test1_res =
+        let #closure3 = add_args_to_closure(test1 1 2) in #closure3;
+    let test2 =
+        let x = 1 in make_closure(sum);
+    let test2_res =
+        let #closure4 = add_args_to_closure(test2 1 2) in #closure4;
+    let test3 a =
+        let #binop5 = (a = 1) in
+        let #if6 = (if #binop5 then make_closure(sum) else make_closure(minus)) in #if6;
+    let test3_res =
+        let #app7 = test3 0 in
+        let #closure8 = add_args_to_closure(#app7 3 4) in #closure8;
+    let a = 5;
+    let b = var(a);
+    let c =
+        let #binop9 = (5 + var(a)) in
+        let #binop10 = (#binop9 + var(b)) in #binop10;
+    let sum4 arg =
+        let #binop11 = (arg + var(a)) in
+        let #binop12 = (#binop11 + var(b)) in
+        let #binop13 = (#binop12 + 1) in #binop13
+
+
+
  |}]
 ;;

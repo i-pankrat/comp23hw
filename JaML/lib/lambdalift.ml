@@ -4,7 +4,7 @@
 
 open Base
 open Typedtree
-open Toplevel
+open LL_ast
 open Monads.VariableNameGeneratorMonad
 
 (* Environment Map

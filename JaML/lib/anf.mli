@@ -6,39 +6,27 @@ type immexpr =
   | ImmNum of int (** ..., -1, 0, 1, ... *)
   | ImmBool of bool (** true, false *)
   | ImmId of string (** identifiers or variables *)
-  | ImmTuple of immexpr list (** (1, 2, a, b) *)
+  | ImmVariable of string (** Represents global variables: let ImmVariable = 2 *)
+  | PassFunctionAsArgument of string (** Represent function passed as a argument *)
 
 type cexpr =
-  | CPlus of immexpr * immexpr (** a + b *)
-  | CMinus of immexpr * immexpr (** a - b *)
-  | CDivide of immexpr * immexpr (** a / b *)
-  | CMultiply of immexpr * immexpr (** a * b *)
-  | CXor of immexpr * immexpr (** a ^ b *)
-  | CAnd of immexpr * immexpr (** a && b *)
-  | COr of immexpr * immexpr (** a || b *)
-  | CEq of immexpr * immexpr (** a = b *)
-  | CNeq of immexpr * immexpr (** a <> b *)
-  | CGt of immexpr * immexpr (** a > b *)
-  | CLt of immexpr * immexpr (** a < b *)
-  | CGte of immexpr * immexpr (** a >= b *)
-  | CLte of immexpr * immexpr (** a <= b *)
+  | CBinOp of Ast.bin_op * immexpr * immexpr (** Binary operation *)
   | CApp of immexpr * immexpr list (** Apply function to its arguments *)
+  | CTuple of immexpr list (** (1, 2, a, b) *)
   | CTake of immexpr * int (** Take(tuple, 0) *)
-  | CMakeClosure of immexpr * int * int * immexpr list
+  | CMakeClosure of immexpr * immexpr list (** Used in partial application *)
+  | CAddArgsToClosure of immexpr * immexpr list (** Add arguments to closure *)
+  | CIfThenElse of immexpr * aexpr * aexpr (** if immexpr then aexpr2 else aexpr3 *)
   | CImmExpr of immexpr (** immexpr *)
 
-type aexpr =
+and aexpr =
   | ALet of string * cexpr * aexpr (** let name = cexpr in aexpr *)
-  | AIfThenElse of cexpr * aexpr * aexpr (** if aexpr1 then aexpr2 else aexpe3 *)
   | ACEexpr of cexpr (** cexpr *)
 
 (** Anf binding type (top level declarations) *)
 type anfexpr =
-  | AnfLetVar of string * aexpr (** let name = aexpr *)
   | AnfLetFun of string * string list * aexpr
-  (** let name arg1, arg2, ..., argn = aexpr. Invariant: there's more than one argument *)
-  | AnfLetRec of string * string list * aexpr
-  (** let rec name arg1, arg2, ..., argn = aexpr. Invariant: there's more than one argument *)
+  (** let name arg1, arg2, ..., argn = aexpr. It's possible to have zero args *)
 
 (** Statements type (list of top level declarations) *)
 type anfstatements = anfexpr list

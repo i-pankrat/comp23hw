@@ -16,75 +16,57 @@ let pp_args pp_el ppf =
   fprintf ppf "%a" (pp_print_list ~pp_sep:(fun ppf _ -> fprintf ppf " ") pp_el)
 ;;
 
-let rec pp_immexpr ppf = function
+let pp_immexpr ppf = function
   | ImmNum i -> fprintf ppf "%d" i
   | ImmBool b -> fprintf ppf "%B" b
   | ImmId s -> fprintf ppf "%s" s
-  | ImmTuple elems -> pp_tuple ppf pp_immexpr elems
+  | ImmVariable s -> fprintf ppf "var(%s)" s
+  | PassFunctionAsArgument f -> fprintf ppf "func(%s)" f
 ;;
 
-let pp_cexpr ppf =
+let rec pp_aexpr tabs ppf =
+  let helper = pp_aexpr 1 in
+  function
+  | ALet (name, cexpr, aexpr) ->
+    fprintf ppf "%alet %a = %a in %a" space tabs pp_name name pp_cexpr cexpr helper aexpr
+  | ACEexpr cexpr -> fprintf ppf "%a" pp_cexpr cexpr
+
+and pp_cexpr ppf =
+  let pp_aexpr = pp_aexpr 1 in
   let pp_args = pp_args pp_immexpr in
   function
-  | CPlus (l, r) -> fprintf ppf "(%a + %a)" pp_immexpr l pp_immexpr r
-  | CMinus (l, r) -> fprintf ppf "(%a - %a)" pp_immexpr l pp_immexpr r
-  | CDivide (l, r) -> fprintf ppf "(%a / %a)" pp_immexpr l pp_immexpr r
-  | CMultiply (l, r) -> fprintf ppf "(%a * %a)" pp_immexpr l pp_immexpr r
-  | CXor (l, r) -> fprintf ppf "(%a ^ %a)" pp_immexpr l pp_immexpr r
-  | CAnd (l, r) -> fprintf ppf "(%a && %a)" pp_immexpr l pp_immexpr r
-  | COr (l, r) -> fprintf ppf "(%a || %a)" pp_immexpr l pp_immexpr r
-  | CEq (l, r) -> fprintf ppf "(%a = %a)" pp_immexpr l pp_immexpr r
-  | CNeq (l, r) -> fprintf ppf "(%a <> %a)" pp_immexpr l pp_immexpr r
-  | CGt (l, r) -> fprintf ppf "(%a > %a)" pp_immexpr l pp_immexpr r
-  | CLt (l, r) -> fprintf ppf "(%a < %a)" pp_immexpr l pp_immexpr r
-  | CGte (l, r) -> fprintf ppf "(%a >= %a)" pp_immexpr l pp_immexpr r
-  | CLte (l, r) -> fprintf ppf "(%a <= %a)" pp_immexpr l pp_immexpr r
-  | CApp (func, args) -> fprintf ppf "(%a %a)" pp_immexpr func pp_args args
+  | CBinOp (op, l, r) ->
+    fprintf ppf "(%a %a %a)" pp_immexpr l Ast.pp_bin_op op pp_immexpr r
+  | CApp (func, args) -> fprintf ppf "%a %a" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
-  | CMakeClosure (imm, _, _, args) ->
-    fprintf ppf "make_closure(%a, %a)" pp_immexpr imm pp_args args
+  | CMakeClosure (imm, args) ->
+    if Base.List.is_empty args
+    then fprintf ppf "make_closure(%a)" pp_immexpr imm
+    else fprintf ppf "make_closure(%a %a)" pp_immexpr imm pp_args args
+  | CAddArgsToClosure (imm, args) ->
+    fprintf ppf "add_args_to_closure(%a %a)" pp_immexpr imm pp_args args
+  | CTuple elems -> pp_tuple ppf pp_immexpr elems
+  | CIfThenElse (if_aexpr, then_aexpr, else_aexpr) ->
+    fprintf
+      ppf
+      "(if %a then %a else %a)"
+      pp_immexpr
+      if_aexpr
+      pp_aexpr
+      then_aexpr
+      pp_aexpr
+      else_aexpr
 ;;
 
-let pp_aexpr =
-  let rec helper tabs ppf =
-    let helper = helper tabs in
-    function
-    | ALet (name, cexpr, aexpr) ->
-      fprintf
-        ppf
-        "%alet %a = %a in %a"
-        space
-        tabs
-        pp_name
-        name
-        pp_cexpr
-        cexpr
-        helper
-        aexpr
-    | AIfThenElse (if_aexpr, then_aexpr, else_aexpr) ->
-      fprintf
-        ppf
-        "if %a then %a else %a"
-        pp_cexpr
-        if_aexpr
-        helper
-        then_aexpr
-        helper
-        else_aexpr
-    | ACEexpr cexpr -> fprintf ppf "%a" pp_cexpr cexpr
-  in
-  helper 1
-;;
+(* | CEmptyClosure cl -> fprintf ppf "empty_closure(%a)" pp_immexpr cl *)
 
-let pp_anfexpr ppf =
+let pp_anfexpr ppf (AnfLetFun (name, args, aexpr)) =
+  let pp_aexpr = pp_aexpr 1 in
   let pp_args = pp_args (fun x -> fprintf x "%s") in
-  function
-  | AnfLetVar (name, aexpr) -> fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr
-  | AnfLetFun (name, args, aexpr) ->
-    fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_aexpr aexpr
-  | AnfLetRec (name, args, aexpr) ->
-    fprintf ppf "let rec %a %a = %a" pp_name name pp_args args pp_aexpr aexpr
+  if Base.List.is_empty args
+  then fprintf ppf "let %a = %a" pp_name name pp_aexpr aexpr
+  else fprintf ppf "let %a %a = %a" pp_name name pp_args args pp_aexpr aexpr
 ;;
 
 let pp_anfstatements =

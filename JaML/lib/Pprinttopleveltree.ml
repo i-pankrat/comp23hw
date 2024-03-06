@@ -2,7 +2,7 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-open Toplevel
+open LL_ast
 open Stdlib.Format
 
 let space ppf depth = fprintf ppf "\n%*s" (4 * depth) ""

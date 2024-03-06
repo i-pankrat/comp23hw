@@ -2,7 +2,7 @@
 
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
-open Toplevel
+open LL_ast
 open Stdlib.Format
 
 val pp_llbinding_wt : formatter -> llbinding -> unit
