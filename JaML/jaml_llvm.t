@@ -89,10 +89,6 @@ Show help
   true
   0
 
-(let _ = 
->       let _ = print_int n in 
->       let _ = print_bool (cond) in 
->       range (n + 1) m)
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let test f x y = if f x y then x + 1 + 3 else y + 4 + 5
   > let f x y = (x > 0) && (y <> 0)
@@ -229,7 +225,8 @@ Show help
 
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
-  > let f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 = a1 + a2 - a3 * a4 / a5 + a6 - a7 * a8 / a9 + a10 - a11 * a12 / a13 + a14 - a15 * a16
+  > let f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 = 
+  >     a1 + a2 - a3 * a4 / a5 + a6 - a7 * a8 / a9 + a10 - a11 * a12 / a13 + a14 - a15 * a16
   > let x = f 
   > let pa = x 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
   > let main = print_int (pa)
@@ -244,11 +241,11 @@ Show help
   > EOF
   143
 
+
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
-  > let f _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ a16 = a16
-  > let x = f 
-  > let pa = x 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 143
+  > let sum_cortage ((a, b), (d, _), _, (x, y)) = a + b + d + x + y
+  > let x = sum_cortage 
+  > let pa = x ((10, 20), (10, 20), 10, (15, 14))
   > let main = print_int (pa)
   > EOF
-  143
-
+  69
