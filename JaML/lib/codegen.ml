@@ -25,45 +25,23 @@ type error = Not_Implemented
 let rev lst = Array.rev @@ Array.of_list lst
 
 let rec codegen_imm_args args =
-  List.fold
-    ~f:(fun acc arg ->
-      let* arg' = codegen_imm [] arg in
-      let* acc = acc in
-      return (arg' :: acc))
-    ~init:(return [])
-    args
+  let* args =
+    List.fold
+      ~f:(fun acc arg ->
+        let* arg' = codegen_imm arg in
+        let* acc = acc in
+        return (arg' :: acc))
+      ~init:(return [])
+      args
+  in
+  return @@ rev args
 
-and codegen_imm args = function
+and codegen_imm = function
   | ImmNum i -> return @@ const_int i64 i
   | ImmBool b -> return @@ const_int i64 (Bool.to_int b)
   | ImmId id ->
     (match lookup_function id md with
-     | Some v ->
-       if Array.is_empty @@ params v
-       then
-         return
-         @@ build_call
-              (function_type i64 [||])
-              (Stdlib.Option.get @@ lookup_function id md)
-              [||]
-              "global_var"
-              builder
-       else if Array.length @@ params v = List.length args
-       then return v
-       else
-         let* args = codegen_imm_args args in
-         return
-         @@ build_call
-              func2_ty
-              (Stdlib.Option.get @@ lookup_function "make_pa" md)
-              (Array.append
-                 [| build_pointercast v i64 "pointer_to_int" builder
-                  ; const_int i64 @@ Array.length @@ params v
-                  ; const_int i64 (List.length args)
-                 |]
-                 (rev args))
-              "make_pa"
-              builder
+     | Some v -> return v
      | None ->
        return
        @@ build_load i64 (Stdlib.Option.get @@ Hashtbl.find named_values id) id builder)
@@ -89,43 +67,52 @@ let bin_op op l' r' =
 
 let rec codegen_cexpr cexpr =
   let binop_imm l r =
-    let* l = codegen_imm [] l in
-    let* r = codegen_imm [] r in
+    let* l = codegen_imm l in
+    let* r = codegen_imm r in
     return (l, r)
   in
   match cexpr with
   | CBinOp (s, l, r) ->
     let* l', r' = binop_imm l r in
     return @@ build_zext (bin_op s l' r') i64 "to_int" builder
-  | CImmExpr imm -> codegen_imm [] imm
+  | CImmExpr imm -> codegen_imm imm
   | CApp (callee, args) ->
-    let* callee = codegen_imm args callee in
-    if List.is_empty args
-    then return callee
-    else
-      let* args, args_types =
-        List.fold
-          ~f:(fun acc arg ->
-            let* arg' = codegen_imm [] arg in
-            let* args, types = acc in
-            let arg_type = Fn.const i64 arg' in
-            return (arg' :: args, arg_type :: types))
-          ~init:(return ([], []))
-          args
-      in
-      let fnty = function_type i64 (rev args_types) in
-      return @@ build_call fnty callee (rev args) "apply_n" builder
+    let* callee = codegen_imm callee in
+    let* args, args_types =
+      List.fold
+        ~f:(fun acc arg ->
+          let* arg' = codegen_imm arg in
+          let* args, types = acc in
+          let arg_type = Fn.const i64 arg' in
+          return (arg' :: args, arg_type :: types))
+        ~init:(return ([], []))
+        args
+    in
+    let fnty = function_type i64 (rev args_types) in
+    return @@ build_call fnty callee (rev args) "apply_n" builder
   | CMakeClosure (callee, args) ->
-    let* callee = codegen_imm args callee in
-    return @@ callee
+    let* callee = codegen_imm callee in
+    let* args = codegen_imm_args args in
+    return
+    @@ build_call
+         func2_ty
+         (Stdlib.Option.get @@ lookup_function "make_pa" md)
+         (Array.append
+            [| build_pointercast callee i64 "pointer_to_int" builder
+             ; const_int i64 @@ Array.length @@ params callee
+             ; const_int i64 (Array.length args)
+            |]
+            args)
+         "make_pa"
+         builder
   | CAddArgsToClosure (callee, args) ->
-    let* callee = codegen_imm [] callee in
+    let* callee = codegen_imm callee in
     let* args = codegen_imm_args args in
     return
     @@ build_call
          func2_ty
          (Stdlib.Option.get @@ lookup_function "add_args_to_pa" md)
-         (Array.append [| callee; const_int i64 (List.length args) |] (rev args))
+         (Array.append [| callee; const_int i64 (Array.length args) |] args)
          "add_args_to_pa"
          builder
   | CTuple immexpr ->
@@ -134,11 +121,11 @@ let rec codegen_cexpr cexpr =
     @@ build_call
          func_ty
          (Stdlib.Option.get @@ lookup_function "tuple_make" md)
-         (Array.append [| const_int i64 @@ List.length immexpr |] (rev immlst))
+         (Array.append [| const_int i64 @@ Array.length immlst |] immlst)
          "tuple_make"
          builder
   | CTake (immexpr, index) ->
-    let* immexpr = codegen_imm [] immexpr in
+    let* immexpr = codegen_imm immexpr in
     return
     @@ build_call
          func2_ty
@@ -147,7 +134,7 @@ let rec codegen_cexpr cexpr =
          "tuple_take"
          builder
   | CIfThenElse (cond, th, el) ->
-    let condition = codegen_imm [] cond in
+    let condition = codegen_imm cond in
     let* condition = condition in
     let zero = const_int i64 0 in
     let cond_val = build_icmp Icmp.Ne condition zero "if_cond" builder in
