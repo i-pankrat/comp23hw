@@ -41,11 +41,11 @@ and pp_cexpr ppf =
     else fprintf ppf "%a %a" pp_immexpr func pp_args args
   | CImmExpr imm -> fprintf ppf "%a" pp_immexpr imm
   | CTake (imm, n) -> fprintf ppf "take(%a, %i)" pp_immexpr imm n
-  | CMakeClosure (imm, args) ->
+  | CMakeClosure (imm, _, _, args) ->
     if Base.List.is_empty args
     then fprintf ppf "make_empty_closure(%a)" pp_immexpr imm
     else fprintf ppf "make_closure(%a %a)" pp_immexpr imm pp_args args
-  | CAddArgsToClosure (imm, args) ->
+  | CAddArgsToClosure (imm, _, args) ->
     fprintf ppf "add_args_to_closure(%a %a)" pp_immexpr imm pp_args args
   | CTuple elems -> pp_tuple ppf pp_immexpr elems
   | CIfThenElse (if_aexpr, then_aexpr, else_aexpr) ->

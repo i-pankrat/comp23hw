@@ -16,8 +16,9 @@ type cexpr =
   | CApp of immexpr * immexpr list (** Apply function to its arguments *)
   | CTuple of immexpr list (** (1, 2, a, b) *)
   | CTake of immexpr * int (** Take(tuple, 0) *)
-  | CMakeClosure of immexpr * immexpr list (** Used in partial application *)
-  | CAddArgsToClosure of immexpr * immexpr list (** Add arguments to closure *)
+  | CMakeClosure of (immexpr * int * int * immexpr list)
+  (** Used in partial application *)
+  | CAddArgsToClosure of immexpr * int * immexpr list (** Add arguments to closure *)
   | CIfThenElse of immexpr * aexpr * aexpr (** if immexpr then aexpr2 else aexpr3 *)
   | CImmExpr of immexpr (** immexpr *)
 

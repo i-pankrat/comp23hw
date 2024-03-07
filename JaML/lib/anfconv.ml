@@ -109,12 +109,12 @@ let anf env e expr_with_hole =
          let immid = ImmId name in
          let* hole = expr_with_hole gl_immid in
          return (ALet (gl_name, CApp (immid, []), hole))
-       | Some _ ->
+       | Some n ->
          let* cl_name = fresh "#empty_closure" in
          let cl_immid = ImmId cl_name in
          let immid = ImmId name in
          let* hole = expr_with_hole cl_immid in
-         return (ALet (cl_name, CMakeClosure (immid, []), hole))
+         return (ALet (cl_name, CMakeClosure (immid, n, 0, []), hole))
        | _ -> expr_with_hole (ImmId name))
     | LBinop ((op, _), e1, e2) ->
       helper e1 (fun limm ->
@@ -131,12 +131,13 @@ let anf env e expr_with_hole =
       let construct_closure expr_with_hole imm args =
         let* new_name = fresh "#closure" in
         let* hole = expr_with_hole (ImmId new_name) in
-        return (ALet (new_name, CMakeClosure (imm, args), hole))
+        let _, n = Stdlib.Option.get @@ is_imm_top_declaration env imm in
+        return (ALet (new_name, CMakeClosure (imm, n, List.length args, args), hole))
       in
       let construct_add_args_to_closure expr_with_hole imm args =
         let* new_name = fresh "#closure" in
         let* hole = expr_with_hole (ImmId new_name) in
-        return (ALet (new_name, CAddArgsToClosure (imm, args), hole))
+        return (ALet (new_name, CAddArgsToClosure (imm, List.length args, args), hole))
       in
       let construct_app_add_args_to_closure expr_with_hole imm app_args cl_args =
         let app = CApp (imm, app_args) in
@@ -147,7 +148,10 @@ let anf env e expr_with_hole =
           (ALet
              ( new_app
              , app
-             , ALet (new_closure, CAddArgsToClosure (ImmId new_app, cl_args), hole) ))
+             , ALet
+                 ( new_closure
+                 , CAddArgsToClosure (ImmId new_app, List.length cl_args, cl_args)
+                 , hole ) ))
       in
       (* app_helper is used for collecting all arguments at the application *)
       let rec app_helper curr_args = function
