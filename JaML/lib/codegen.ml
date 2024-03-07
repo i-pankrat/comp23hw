@@ -72,7 +72,7 @@ let rec codegen_cexpr = function
     in
     let fnty = function_type i64 (rev args_types) in
     build_call fnty callee (rev args) "apply_n" builder
-  | CMakeClosure (callee, args) ->
+  | CMakeClosure (callee, max_args, app_args, args) ->
     let callee = codegen_imm callee in
     let args = codegen_imm_args args in
     build_call
@@ -80,19 +80,19 @@ let rec codegen_cexpr = function
       (lookup_function_exn "make_pa")
       (Array.append
          [| build_pointercast callee i64 "pointer_to_int" builder
-          ; const_int i64 @@ Array.length @@ params callee
-          ; const_int i64 (Array.length args)
+          ; const_int i64 max_args
+          ; const_int i64 app_args
          |]
          args)
       "make_pa"
       builder
-  | CAddArgsToClosure (callee, args) ->
+  | CAddArgsToClosure (callee, app_args, args) ->
     let callee = codegen_imm callee in
     let args = codegen_imm_args args in
     build_call
       func2_ty
       (lookup_function_exn "add_args_to_pa")
-      (Array.append [| callee; const_int i64 (Array.length args) |] args)
+      (Array.append [| callee; const_int i64 app_args |] args)
       "add_args_to_pa"
       builder
   | CTuple immexpr ->
