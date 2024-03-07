@@ -14,7 +14,7 @@ module JamlCLIArgs = struct
     ; compiler : bool
     }
 
-  let usage = "jaml -i -d -f <file>\nCompile program from stdin"
+  let usage = "jaml -i -d -f -ll -x86_64 <file>\nCompile program from stdin"
 
   let parse () =
     let infer = ref false in
@@ -28,7 +28,7 @@ module JamlCLIArgs = struct
       ; "-f", Set_string file, "Read program from specified file, not from the stdin."
       ; "-d", Set occurs_check_flag, "Disable occurrence checking during type checking"
       ; "-ll", Clear compiler, "Compilation with Llvm"
-      ; "-x86", Set compiler, "Compilation with x86_64"
+      ; "-x86_64", Set compiler, "Compilation with x86_64"
       ]
     in
     let anon _ = () in

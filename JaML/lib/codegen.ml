@@ -15,6 +15,7 @@ let func2_ty = function_type i64 [| i64; i64 |]
 
 (* Vararg function type *)
 let va_func_ty arr = var_arg_function_type i64 arr
+let lookup_function_exn name = Stdlib.Option.get @@ lookup_function name md
 let named_values = Hashtbl.create (module String)
 let rev lst = Array.rev @@ Array.of_list lst
 
@@ -75,11 +76,7 @@ let rec codegen_cexpr = function
     let callee = codegen_imm callee in
     let args, args_types =
       List.fold
-        ~f:(fun acc arg ->
-          let arg' = codegen_imm arg in
-          let args, types = acc in
-          let arg_type = Fn.const i64 arg' in
-          arg' :: args, arg_type :: types)
+        ~f:(fun (args, types) arg -> codegen_imm arg :: args, i64 :: types)
         ~init:([], [])
         args
     in
@@ -90,7 +87,7 @@ let rec codegen_cexpr = function
     let args = codegen_imm_args args in
     build_call
       func2_ty
-      (Stdlib.Option.get @@ lookup_function "make_pa" md)
+      (lookup_function_exn "make_pa")
       (Array.append
          [| build_pointercast callee i64 "pointer_to_int" builder
           ; const_int i64 @@ Array.length @@ params callee
@@ -104,7 +101,7 @@ let rec codegen_cexpr = function
     let args = codegen_imm_args args in
     build_call
       func2_ty
-      (Stdlib.Option.get @@ lookup_function "add_args_to_pa" md)
+      (lookup_function_exn "add_args_to_pa")
       (Array.append [| callee; const_int i64 (Array.length args) |] args)
       "add_args_to_pa"
       builder
@@ -112,7 +109,7 @@ let rec codegen_cexpr = function
     let immlst = codegen_imm_args immexpr in
     build_call
       func_ty
-      (Stdlib.Option.get @@ lookup_function "tuple_make" md)
+      (lookup_function_exn "tuple_make")
       (Array.append [| const_int i64 @@ Array.length immlst |] immlst)
       "tuple_make"
       builder
@@ -120,7 +117,7 @@ let rec codegen_cexpr = function
     let immexpr = codegen_imm immexpr in
     build_call
       func2_ty
-      (Stdlib.Option.get @@ lookup_function "tuple_take" md)
+      (lookup_function_exn "tuple_take")
       [| immexpr; const_int i64 index |]
       "tuple_take"
       builder
