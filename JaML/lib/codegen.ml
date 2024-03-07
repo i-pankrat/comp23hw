@@ -131,11 +131,11 @@ let rec codegen_cexpr = function
     let incoming = [ then_val, new_then_bb; else_val, new_else_bb ] in
     let phi = build_phi incoming "if_phi" builder in
     position_at_end start_bb builder;
-    build_cond_br cond_val then_bb else_bb builder |> ignore;
+    let (_ : Llvm.llvalue) = build_cond_br cond_val then_bb else_bb builder in
     position_at_end new_then_bb builder;
-    build_br merge_bb builder |> ignore;
+    let (_ : Llvm.llvalue) = build_br merge_bb builder in
     position_at_end new_else_bb builder;
-    build_br merge_bb builder |> ignore;
+    let (_ : Llvm.llvalue) = build_br merge_bb builder in
     position_at_end merge_bb builder;
     phi
 
@@ -144,7 +144,7 @@ and codegen_aexpr = function
   | ALet (name, cexpr, aexpr) ->
     let alloca = build_alloca i64 name builder in
     let cexpr = codegen_cexpr cexpr in
-    build_store cexpr alloca builder |> ignore;
+    let (_ : Llvm.llvalue) = build_store cexpr alloca builder in
     Hashtbl.set named_values ~key:name ~data:alloca;
     codegen_aexpr aexpr
 ;;
@@ -160,13 +160,13 @@ let codegen_anfexpr (AnfLetFun (name, args, aexpr)) =
       match List.nth_exn args i with
       | Used name' ->
         let alloca = build_alloca i64 name' builder in
-        build_store arg alloca builder |> ignore;
+        let (_ : Llvm.llvalue) = build_store arg alloca builder in
         set_value_name name' arg;
         Hashtbl.set named_values ~key:name' ~data:alloca
       | Unused -> ())
     (params func_val);
   let aexpr = codegen_aexpr aexpr in
-  build_ret aexpr builder |> ignore;
+  let (_ : Llvm.llvalue) = build_ret aexpr builder in
   func_val
 ;;
 
