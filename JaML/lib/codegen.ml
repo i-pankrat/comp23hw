@@ -39,29 +39,37 @@ and codegen_imm = function
        build_load i64 (Stdlib.Option.get @@ Hashtbl.find named_values id) id builder)
 ;;
 
-let bin_op op l' r' =
+let bin_op op l' r' f =
   let open Ast in
-  match op with
-  | Add -> build_add l' r' "add" builder
-  | Sub -> build_sub l' r' "sub" builder
-  | Div -> build_sdiv l' r' "div" builder
-  | Mul -> build_mul l' r' "mul" builder
-  | Xor -> build_xor l' r' "xor" builder
-  | And -> build_and l' r' "and" builder
-  | Or -> build_or l' r' "or" builder
-  | Eq -> build_icmp Icmp.Eq l' r' "eq" builder
-  | Neq -> build_icmp Icmp.Ne l' r' "neq" builder
-  | Gt -> build_icmp Icmp.Sgt l' r' "gt" builder
-  | Lt -> build_icmp Icmp.Slt l' r' "lt" builder
-  | Gte -> build_icmp Icmp.Sge l' r' "gte" builder
-  | Lte -> build_icmp Icmp.Sle l' r' "lte" builder
+  let op =
+    match op with
+    | Add -> build_add l' r' "add" builder
+    | Sub -> build_sub l' r' "sub" builder
+    | Div -> build_sdiv l' r' "div" builder
+    | Mul -> build_mul l' r' "mul" builder
+    | Xor -> build_xor l' r' "xor" builder
+    | And -> build_and l' r' "and" builder
+    | Or -> build_or l' r' "or" builder
+    | Eq -> build_icmp Icmp.Eq l' r' "eq" builder
+    | Neq -> build_icmp Icmp.Ne l' r' "neq" builder
+    | Gt -> build_icmp Icmp.Sgt l' r' "gt" builder
+    | Lt -> build_icmp Icmp.Slt l' r' "lt" builder
+    | Gte -> build_icmp Icmp.Sge l' r' "gte" builder
+    | Lte -> build_icmp Icmp.Sle l' r' "lte" builder
+  in
+  f op
 ;;
 
 let rec codegen_cexpr = function
   | CBinOp (s, l, r) ->
     let l' = codegen_imm l in
     let r' = codegen_imm r in
-    build_zext (bin_op s l' r') i64 "to_int" builder
+    let func =
+      match s with
+      | Add | Sub | Div | Mul -> fun x -> x
+      | _ -> fun llvalue -> build_zext llvalue i64 "to_int" builder
+    in
+    bin_op s l' r' func
   | CImmExpr imm -> codegen_imm imm
   | CApp (callee, args) ->
     let callee = codegen_imm callee in
