@@ -1,0 +1,9 @@
+(executable
+ (name llvm_tests)
+ (modules llvm_tests)
+ (libraries JaML.Lib stdio)
+ (link_deps
+  (file ../../jaml-runtime.so)))
+
+(cram
+ (deps ./llvm_tests.exe ../../jaml-runtime.so))
