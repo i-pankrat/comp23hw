@@ -5,7 +5,5 @@
 open Anf
 open Llvm
 
-type error
-
 val md : llmodule
-val compile : anfexpr list -> (llvalue list, error) result
+val compile : anfexpr list -> llvalue list
