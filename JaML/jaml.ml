@@ -71,14 +71,13 @@ let compile_llvm test_case mode =
     (match Inferencer.infer mode commands with
      | Error err -> Inferencer.pp_error fmt err
      | Ok typed_commands ->
-       let anf =
-         Closure.closure typed_commands |> Lambdalift.lambda_lift |> Anfconv.anf
-       in
-       (match Codegen.compile anf with
-        | Ok llvalue_list ->
-          Base.List.iter llvalue_list ~f:(fun f ->
-            Stdlib.Format.printf "%s\n" (Llvm.string_of_llvalue f))
-        | Error _ -> Stdlib.Format.printf "Error"))
+       Closure.closure typed_commands
+       |> Lambdalift.lambda_lift
+       |> Anfconv.anf
+       |> Codegen.compile
+       |> fun llvalue_list ->
+       Base.List.iter llvalue_list ~f:(fun f ->
+         Stdlib.Format.printf "%s\n" (Llvm.string_of_llvalue f)))
 ;;
 
 let read_input filename =
