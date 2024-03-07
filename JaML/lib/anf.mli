@@ -3,8 +3,8 @@
 (** SPDX-License-Identifier: LGPL-2.1-or-later *)
 
 type arg =
-  | Used of string
-  | Unused
+  | Used of string (** Represent usual argument *)
+  | Unused (** Represent unused argument (wildcard for example) *)
 
 type immexpr =
   | ImmNum of int (** ..., -1, 0, 1, ... *)

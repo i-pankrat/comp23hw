@@ -14,8 +14,8 @@ type typed_id = string * ty
 
 (** Typed argument to separate the arguments used and no *)
 type typed_arg =
-  | Used of string * ty
-  | Unused of ty
+  | Used of string * ty (** Represent usual argument *)
+  | Unused of ty (** Represent unused arguments (wildcard for example) *)
 
 (** Typed sign of a binary operation *)
 type typed_binop = bin_op * ty
