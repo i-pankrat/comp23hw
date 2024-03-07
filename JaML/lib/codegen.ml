@@ -12,23 +12,13 @@ let builder = builder ctx
 let i64 = i64_type ctx
 let func_ty = function_type i64 [| i64 |]
 let func2_ty = function_type i64 [| i64; i64 |]
-
-(* Vararg function type *)
 let va_func_ty arr = var_arg_function_type i64 arr
 let lookup_function_exn name = Stdlib.Option.get @@ lookup_function name md
 let named_values = Hashtbl.create (module String)
 let rev lst = Array.rev @@ Array.of_list lst
 
 let rec codegen_imm_args args =
-  let args =
-    List.fold
-      ~f:(fun acc arg ->
-        let arg' = codegen_imm arg in
-        arg' :: acc)
-      ~init:[]
-      args
-  in
-  rev args
+  rev @@ List.fold ~f:(fun acc arg -> codegen_imm arg :: acc) ~init:[] args
 
 and codegen_imm = function
   | ImmNum i -> const_int i64 i
@@ -40,8 +30,13 @@ and codegen_imm = function
        build_load i64 (Stdlib.Option.get @@ Hashtbl.find named_values id) id builder)
 ;;
 
-let bin_op op l' r' f =
+let bin_op op l' r' =
   let open Ast in
+  let f =
+    match op with
+    | Add | Sub | Div | Mul -> fun x -> x
+    | _ -> fun llvalue -> build_zext llvalue i64 "to_int" builder
+  in
   let op =
     match op with
     | Add -> build_add l' r' "add" builder
@@ -65,12 +60,7 @@ let rec codegen_cexpr = function
   | CBinOp (s, l, r) ->
     let l' = codegen_imm l in
     let r' = codegen_imm r in
-    let func =
-      match s with
-      | Add | Sub | Div | Mul -> fun x -> x
-      | _ -> fun llvalue -> build_zext llvalue i64 "to_int" builder
-    in
-    bin_op s l' r' func
+    bin_op s l' r'
   | CImmExpr imm -> codegen_imm imm
   | CApp (callee, args) ->
     let callee = codegen_imm callee in
@@ -155,31 +145,29 @@ and codegen_aexpr = function
     let alloca = build_alloca i64 name builder in
     let cexpr = codegen_cexpr cexpr in
     build_store cexpr alloca builder |> ignore;
-    Hashtbl.add_exn named_values ~key:name ~data:alloca;
+    Hashtbl.set named_values ~key:name ~data:alloca;
     codegen_aexpr aexpr
 ;;
 
-let codegen_anfexpr = function
-  | AnfLetFun (name, args, aexpr) ->
-    Hashtbl.clear named_values;
-    let arg_arr = List.map ~f:(Fn.const i64) args in
-    let func2_type = function_type i64 (Array.of_list arg_arr) in
-    let func_val = declare_function name func2_type md in
-    let entry = append_block ctx "entry" func_val in
-    position_at_end entry builder;
-    Array.iteri
-      ~f:(fun i arg ->
-        match Stdlib.Option.get @@ List.nth args i with
-        | Used name' ->
-          let alloca = build_alloca i64 name' builder in
-          build_store arg alloca builder |> ignore;
-          set_value_name name' arg;
-          Hashtbl.set named_values ~key:name' ~data:alloca
-        | Unused -> ())
-      (params func_val);
-    let aexpr = codegen_aexpr aexpr in
-    build_ret aexpr builder |> ignore;
-    func_val
+let codegen_anfexpr (AnfLetFun (name, args, aexpr)) =
+  let arg_arr = List.map ~f:(Fn.const i64) args in
+  let func2_type = function_type i64 (Array.of_list arg_arr) in
+  let func_val = declare_function name func2_type md in
+  let entry = append_block ctx "entry" func_val in
+  position_at_end entry builder;
+  Array.iteri
+    ~f:(fun i arg ->
+      match List.nth_exn args i with
+      | Used name' ->
+        let alloca = build_alloca i64 name' builder in
+        build_store arg alloca builder |> ignore;
+        set_value_name name' arg;
+        Hashtbl.set named_values ~key:name' ~data:alloca
+      | Unused -> ())
+    (params func_val);
+  let aexpr = codegen_aexpr aexpr in
+  build_ret aexpr builder |> ignore;
+  func_val
 ;;
 
 let compile f =
@@ -192,13 +180,5 @@ let compile f =
     ; declare_function "print_bool" func_ty md
     ]
   in
-  let compiled =
-    List.fold
-      ~f:(fun acc func ->
-        let expr = codegen_anfexpr func in
-        expr :: acc)
-      ~init:runtime
-      f
-  in
-  List.rev compiled
+  List.rev @@ List.fold ~f:(fun acc func -> codegen_anfexpr func :: acc) ~init:runtime f
 ;;
