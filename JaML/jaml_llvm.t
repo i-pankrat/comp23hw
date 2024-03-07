@@ -1,3 +1,14 @@
+Show help
+  $ ./jaml.exe -help
+  jaml -i -d -f -ll -x86_64 <file>
+  Compile program from stdin
+    -i Infer only the types for the input, do not use the compiler.
+    -f Read program from specified file, not from the stdin.
+    -d Disable occurrence checking during type checking
+    -ll Compilation with Llvm
+    -x86_64 Compilation with x86_64
+    -help  Display this list of options
+    --help  Display this list of options
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let main = print_int 1
   > EOF
@@ -43,9 +54,9 @@
   8
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
-  > let sum a = a
-  > let sum_pa = sum 
-  > let main = print_int (sum_pa 2)
+  > let id a = a
+  > let id_pa = id 
+  > let main = print_int (id_pa 2)
   > EOF
   2
 

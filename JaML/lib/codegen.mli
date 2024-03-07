@@ -5,5 +5,4 @@
 open Anf
 open Llvm
 
-val md : llmodule
 val compile : anfexpr list -> llvalue list
