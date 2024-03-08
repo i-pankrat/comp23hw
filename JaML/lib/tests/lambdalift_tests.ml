@@ -110,9 +110,9 @@ let%expect_test _ =
   in
   [%expect
     {|
-    let #tuple_out1  = (1, 2);
-    let a  = take(#tuple_out1, 0);
-    let b  = take(#tuple_out1, 1)
+    let _tuple_out1  = (1, 2);
+    let a  = take(_tuple_out1, 0);
+    let b  = take(_tuple_out1, 1)
     |}]
 ;;
 
@@ -123,7 +123,7 @@ let%expect_test _ =
     |} in
     run_lambda_test e
   in
-  [%expect {| let #tuple_out1  = (1, 2) |}]
+  [%expect {| let _tuple_out1  = (1, 2) |}]
 ;;
 
 let%expect_test _ =
@@ -137,9 +137,9 @@ let%expect_test _ =
   [%expect
     {|
     let make_tuple a b = (a, b);
-    let #tuple_out1  = make_tuple 1 2;
-    let f  = take(#tuple_out1, 0);
-    let s  = take(#tuple_out1, 1)
+    let _tuple_out1  = make_tuple 1 2;
+    let f  = take(_tuple_out1, 0);
+    let s  = take(_tuple_out1, 1)
     |}]
 ;;
 
@@ -156,10 +156,10 @@ let%expect_test _ =
   [%expect
     {|
     let make_tuple a b = (a, b);
-    let #tuple_out1  = make_tuple 1 (2, 4, 3);
-    let f  = take(#tuple_out1, 0);
-    let s  = take(take(#tuple_out1, 1), 0);
-    let x  = take(take(#tuple_out1, 1), 2)
+    let _tuple_out1  = make_tuple 1 (2, 4, 3);
+    let f  = take(_tuple_out1, 0);
+    let s  = take(take(_tuple_out1, 1), 0);
+    let x  = take(take(_tuple_out1, 1), 2)
     |}]
 ;;
 
@@ -179,12 +179,12 @@ let%expect_test _ =
     {|
     let make_tuple a b = (a, b);
     let x  =
-        let #tuple_out1 = make_tuple 1 (2, (4, 5), 3) in
-        let f = take(#tuple_out1, 0) in
-        let s = take(take(#tuple_out1, 1), 0) in
-        let k = take(take(take(#tuple_out1, 1), 1), 0) in
-        let l = take(take(take(#tuple_out1, 1), 1), 1) in
-        let x = take(take(take(#tuple_out1, 1), 1), 2) in (f, s)
+        let _tuple_out1 = make_tuple 1 (2, (4, 5), 3) in
+        let f = take(_tuple_out1, 0) in
+        let s = take(take(_tuple_out1, 1), 0) in
+        let k = take(take(take(_tuple_out1, 1), 1), 0) in
+        let l = take(take(take(_tuple_out1, 1), 1), 1) in
+        let x = take(take(take(_tuple_out1, 1), 1), 2) in (f, s)
     |}]
 ;;
 
@@ -199,14 +199,14 @@ let%expect_test _ =
   in
   [%expect
     {|
-      let x #tuple_arg1 k #tuple_arg2 l =
-          let f = take(#tuple_arg1, 0) in
-          let s = take(#tuple_arg1, 1) in
-          let y = take(#tuple_arg1, 2) in
-          let s = take(#tuple_arg2, 0) in
-          let m = take(take(#tuple_arg2, 1), 0) in
-          let d = take(take(#tuple_arg2, 1), 1) in
-          let u = take(take(#tuple_arg2, 1), 2) in ((((f + s) + y) / k) * ((((s + m) + d) + u) / l)) 
+      let x _tuple_arg1 k _tuple_arg2 l =
+          let f = take(_tuple_arg1, 0) in
+          let s = take(_tuple_arg1, 1) in
+          let y = take(_tuple_arg1, 2) in
+          let s = take(_tuple_arg2, 0) in
+          let m = take(take(_tuple_arg2, 1), 0) in
+          let d = take(take(_tuple_arg2, 1), 1) in
+          let u = take(take(_tuple_arg2, 1), 2) in ((((f + s) + y) / k) * ((((s + m) + d) + u) / l))
     |}]
 ;;
 
@@ -248,11 +248,11 @@ let%expect_test _ =
   in
   [%expect
     {|
-      let sum_cortage #tuple_arg1 =
-          let a = take(take(#tuple_arg1, 0), 0) in
-          let b = take(take(#tuple_arg1, 0), 1) in
-          let d = take(take(#tuple_arg1, 1), 0) in
-          let x = take(take(#tuple_arg1, 3), 0) in
-          let y = take(take(#tuple_arg1, 3), 1) in ((((a + b) + d) + x) + y)
+      let sum_cortage _tuple_arg1 =
+          let a = take(take(_tuple_arg1, 0), 0) in
+          let b = take(take(_tuple_arg1, 0), 1) in
+          let d = take(take(_tuple_arg1, 1), 0) in
+          let x = take(take(_tuple_arg1, 3), 0) in
+          let y = take(take(_tuple_arg1, 3), 1) in ((((a + b) + d) + x) + y)
     |}]
 ;;

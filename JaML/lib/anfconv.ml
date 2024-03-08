@@ -104,13 +104,13 @@ let anf env e expr_with_hole =
     | LVar (name, _) ->
       (match Env.get_opt env name with
        | Some 0 ->
-         let* gl_name = fresh "#global_var" in
+         let* gl_name = fresh "_global_var" in
          let gl_immid = ImmId gl_name in
          let immid = ImmId name in
          let* hole = expr_with_hole gl_immid in
          return (ALet (gl_name, CApp (immid, []), hole))
        | Some n ->
-         let* cl_name = fresh "#empty_closure" in
+         let* cl_name = fresh "_empty_closure" in
          let cl_immid = ImmId cl_name in
          let immid = ImmId name in
          let* hole = expr_with_hole cl_immid in
@@ -119,30 +119,30 @@ let anf env e expr_with_hole =
     | LBinop ((op, _), e1, e2) ->
       helper e1 (fun limm ->
         helper e2 (fun rimm ->
-          let* new_name = fresh "#binop" in
+          let* new_name = fresh "_binop" in
           let* hole = expr_with_hole @@ ImmId new_name in
           return (ALet (new_name, CBinOp (op, limm, rimm), hole))))
     | LApp _ as application ->
       let construct_app expr_with_hole imm args =
-        let* new_name = fresh "#app" in
+        let* new_name = fresh "_app" in
         let* hole = expr_with_hole (ImmId new_name) in
         return (ALet (new_name, CApp (imm, args), hole))
       in
       let construct_closure expr_with_hole imm args =
-        let* new_name = fresh "#closure" in
+        let* new_name = fresh "_closure" in
         let* hole = expr_with_hole (ImmId new_name) in
         let _, n = Stdlib.Option.get @@ is_imm_top_declaration env imm in
         return (ALet (new_name, CMakeClosure (imm, n, List.length args, args), hole))
       in
       let construct_add_args_to_closure expr_with_hole imm args =
-        let* new_name = fresh "#closure" in
+        let* new_name = fresh "_closure" in
         let* hole = expr_with_hole (ImmId new_name) in
         return (ALet (new_name, CAddArgsToClosure (imm, List.length args, args), hole))
       in
       let construct_app_add_args_to_closure expr_with_hole imm app_args cl_args =
         let app = CApp (imm, app_args) in
-        let* new_app = fresh "#app" in
-        let* new_closure = fresh "#closure" in
+        let* new_app = fresh "_app" in
+        let* new_closure = fresh "_closure" in
         let* hole = expr_with_hole (ImmId new_closure) in
         return
           (ALet
@@ -193,11 +193,11 @@ let anf env e expr_with_hole =
       helper i (fun immif ->
         let* athen = helper t (fun immthen -> return @@ ACEexpr (CImmExpr immthen)) in
         let* aelse = helper e (fun immelse -> return @@ ACEexpr (CImmExpr immelse)) in
-        let* new_name = fresh "#if" in
+        let* new_name = fresh "_if" in
         let* hole = expr_with_hole @@ ImmId new_name in
         return @@ ALet (new_name, CIfThenElse (immif, athen, aelse), hole))
     | LTuple (elems, _) ->
-      let* new_name = fresh "#tuple" in
+      let* new_name = fresh "_tuple" in
       let rec tuple_helper l = function
         | hd :: tl -> helper hd (fun imm -> tuple_helper (imm :: l) tl)
         | _ ->
@@ -207,7 +207,7 @@ let anf env e expr_with_hole =
       tuple_helper [] elems
     | LTake (lexpr, n) ->
       helper lexpr (fun imm ->
-        let* new_name = fresh "#take" in
+        let* new_name = fresh "_take" in
         let* hole = expr_with_hole (ImmId new_name) in
         return (ALet (new_name, CTake (imm, n), hole)))
   in

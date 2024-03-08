@@ -109,7 +109,7 @@ let rec get_args_let (known, expr_with_hole) = function
   | TFun (TPVar (id, ty), expr, _) ->
     get_args_let (Used (id, ty) :: known, expr_with_hole) expr
   | TFun (TPTuple (pat_lst, ty), expr, _) ->
-    let* new_id = fresh "#tuple_arg" in
+    let* new_id = fresh "_tuple_arg" in
     let take_constr = LVar (new_id, ty) in
     let expr_with_hole, _, _, _ =
       dispose_of_tuple_in pat_lst expr_with_hole take_constr take_constr
@@ -176,7 +176,7 @@ let rec lambda_lift_expr env = function
   | TLetIn (TPTuple (pat_lst, ty), e1, e2) ->
     let* e1, env = lambda_lift_expr env e1 in
     let* e2, env = lambda_lift_expr env e2 in
-    let* new_id = fresh "#tuple_out" in
+    let* new_id = fresh "_tuple_out" in
     let expr_with_hole, _ =
       dispose_of_pattern_in
         pat_lst
@@ -188,7 +188,7 @@ let rec lambda_lift_expr env = function
   | TLetIn (TPWildcard ty, e1, e2) ->
     let* e1, env = lambda_lift_expr env e1 in
     let* e2, env = lambda_lift_expr env e2 in
-    let* new_id = fresh "#wildcard" in
+    let* new_id = fresh "_wildcard" in
     return (LLetIn ((new_id, ty), e1, e2), env)
 ;;
 
@@ -200,12 +200,12 @@ let lambda_lift_bindings env = function
   | TLet (TPTuple (pat_lst, ty), expr) ->
     let* args, expr_with_pat_hole = get_args_let ([], fun x -> x) expr in
     let* expr, env = lambda_lift_expr env expr in
-    let* new_id = fresh "#tuple_out" in
+    let* new_id = fresh "_tuple_out" in
     let lst, _ = dispose_of_pattern pat_lst [] 0 (LVar (new_id, ty)) in
     return (LLet ((new_id, ty), List.rev args, expr_with_pat_hole expr), env, lst)
   | TLet (TPWildcard ty, expr) ->
     let* expr, env = lambda_lift_expr env expr in
-    let* new_id = fresh "#wildcard" in
+    let* new_id = fresh "_wildcard" in
     return (LLet ((new_id, ty), [], expr), env, [])
   | TLetRec ((id, ty), expr) ->
     let* args, expr_with_pat_hole = get_args_let ([], fun x -> x) expr in
