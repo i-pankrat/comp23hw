@@ -1,7 +1,14 @@
 (library
  (name tests)
  (libraries JaML.Lib stdio)
- (modules parser_test infer_tests closure_tests lambdalift_tests anf_tests)
+ (modules
+  parser_test
+  infer_tests
+  closure_tests
+  lambdalift_tests
+  anf_tests
+  monads_tests
+  x86_64_tests)
  (instrumentation
   (backend bisect_ppx))
  (inline_tests)

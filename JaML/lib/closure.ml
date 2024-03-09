@@ -174,7 +174,7 @@ and closure_expr env known = function
     in
     let diff = NameS.diff fv_known known |> NameS.elements in
     let e1, ty = put_diff_arg diff (expr, ty2) in
-    let* new_id = fresh "#closure_fun" in
+    let* new_id = fresh "closure_fun" in
     let env =
       let constr_new_let e2 = TLetIn (TPVar (new_id, ty), e1, e2) in
       extend_env new_id (diff, ty, Some constr_new_let) env

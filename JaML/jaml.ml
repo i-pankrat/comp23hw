@@ -80,6 +80,30 @@ let compile_llvm test_case mode =
          Stdlib.Format.printf "%s\n" (Llvm.string_of_llvalue f)))
 ;;
 
+let compile_asm test_case mode =
+  let fmt = Format.std_formatter in
+  match Parser.parse test_case with
+  | Error err -> Parser.pp_error fmt err
+  | Ok commands ->
+    (match Inferencer.infer mode commands with
+     | Error err -> Inferencer.pp_error fmt err
+     | Ok typed_commands ->
+       Closure.closure typed_commands
+       |> Lambdalift.lambda_lift
+       |> Anfconv.anf
+       |> X86_64.assembly
+       |> (function
+        | Ok asm ->
+          Monads.CompilerMonad.commands_to_file "jaml.S" asm;
+          let _ =
+            Sys.command
+              "nasm -f elf64 -o jaml.o jaml.S && gcc -o jaml jaml.o lib/runtime.o \
+               lib/stdlib.o 2> /dev/null"
+          in
+          ()
+        | _ -> failwith ""))
+;;
+
 let read_input filename =
   if filename <> ""
   then
@@ -97,7 +121,7 @@ let () =
   | Ok input when input <> "" && (not args.compiler) && not args.infer_type ->
     compile_llvm input mode
   | Ok input when input <> "" && args.compiler && not args.infer_type ->
-    printf "Compile input to x86_64"
+    compile_asm input mode
   | Ok _ -> printf "empty input"
   | Error err -> printf "%a\n" pp_error err
 ;;
