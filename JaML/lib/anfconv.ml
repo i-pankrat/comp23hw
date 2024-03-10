@@ -98,7 +98,7 @@ let get_lvar_name = function
    Argument expr_with_hole helps to create anf tree in cps
 *)
 let anf env e expr_with_hole =
-  let rec helper (e : llexpr) (expr_with_hole : immexpr -> aexpr t) =
+  let rec helper ?applied_args (e : llexpr) (expr_with_hole : immexpr -> aexpr t) =
     match e with
     | LConst (const, _) -> expr_with_hole (const_to_immexpr const)
     | LVar (name, _) ->
@@ -109,7 +109,7 @@ let anf env e expr_with_hole =
          let immid = ImmId name in
          let* hole = expr_with_hole gl_immid in
          return (ALet (gl_name, CApp (immid, []), hole))
-       | Some n ->
+       | Some n when Option.is_none applied_args ->
          let* cl_name = fresh "empty_closure" in
          let cl_immid = ImmId cl_name in
          let immid = ImmId name in
@@ -157,7 +157,7 @@ let anf env e expr_with_hole =
       let rec app_helper curr_args = function
         | LApp (a, b, _) -> helper b (fun imm -> app_helper (imm :: curr_args) a)
         | f ->
-          helper f (fun imm ->
+          helper ~applied_args:(List.length curr_args) f (fun imm ->
             match is_imm_top_declaration env imm with
             | None ->
               (* Not top-level declaration. Expect that it's closure *)
