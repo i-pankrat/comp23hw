@@ -71,13 +71,13 @@ Show help
   true
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
-  > let rec range n m = 
+  > let rec range n m =
   > let cond = n >= m in
   > if cond
-  >    then (let _ = print_int n in 
-  >             print_bool (cond)) 
-  >    else (let _ = print_int n in 
-  >             let _ = print_bool (cond) in 
+  >    then (let _ = print_int n in
+  >             print_bool (cond))
+  >    else (let _ = print_int n in
+  >             let _ = print_bool (cond) in
   >             range (n + 1) m)
   > let main = print_int (range 1 3)
   > EOF
@@ -105,7 +105,7 @@ Show help
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let id a = a
-  > let id_pa = id 
+  > let id_pa = id
   > let main = print_int (id_pa 2)
   > EOF
   2
@@ -184,7 +184,7 @@ Show help
   > let fac n =
   > let rec fack n k =
   > if n <= 1 then k 1
-  > else fack (n-1) ((fun k n m -> k (m * n)) k n) 
+  > else fack (n-1) ((fun k n m -> k (m * n)) k n)
   > in
   > fack n (fun x -> x)
   > let main = print_int (fac 7)
@@ -208,7 +208,7 @@ Show help
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let x c (a,b) =
-  >   let sum (c, d) = (a + b, c + d) in  
+  >   let sum (c, d) = (a + b, c + d) in
   >   sum (c, 13)
   > let scd (_, b) = b
   > let main = print_int (scd (x 101 (10, 145)))
@@ -217,7 +217,7 @@ Show help
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 = a1 + a2 - a3 * a4 / a5 + a6 - a7 * a8 / a9 + a10 - a11 * a12 / a13 + a14 - a15 * a16
-  > let x = f 
+  > let x = f
   > let pa = x 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
   > let main = print_int (pa)
   > EOF
@@ -225,9 +225,9 @@ Show help
 
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
-  > let f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 = 
+  > let f a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 =
   >     a1 + a2 - a3 * a4 / a5 + a6 - a7 * a8 / a9 + a10 - a11 * a12 / a13 + a14 - a15 * a16
-  > let x = f 
+  > let x = f
   > let pa = x 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
   > let main = print_int (pa)
   > EOF
@@ -235,7 +235,7 @@ Show help
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let f _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ a16 = a16
-  > let x = f 
+  > let x = f
   > let pa = x 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 143
   > let main = print_int (pa)
   > EOF
@@ -244,8 +244,20 @@ Show help
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let sum_cortage ((a, b), (d, _), _, (x, y)) = a + b + d + x + y
-  > let x = sum_cortage 
+  > let x = sum_cortage
   > let pa = x ((10, 20), (10, 20), 10, (15, 14))
   > let main = print_int (pa)
   > EOF
   69
+
+  $ cat > test.ml <<- EOF
+  > let rec fix = fun f -> (fun x -> f (fix f) x)
+  > let fac = fun self -> (fun n -> (fun k ->
+  >   if n<2 then k 1 else self (n-1) (fun a -> k (n*a))))
+  > let fac = (fun a -> fix fac a)
+  > let z = fac 5 (fun a -> a)
+  > EOF
+  $ ocaml test.ml
+  $ cat test.ml | nl -ba
+  $ cat test.ml | time ./jaml.exe -ll
+
