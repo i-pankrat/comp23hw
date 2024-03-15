@@ -20,11 +20,18 @@ let run_infer_statements =
     Stdlib.Format.printf "%a%!" pp_statements te
 ;;
 
+let run_infer_statements2 =
+  let open Jaml_lib.Pprinttypedtree in
+  function
+  | Result.Error e -> Stdlib.Format.printf "%a%!" pp_error e
+  | Result.Ok te -> Stdlib.Format.printf "%s" (Jaml_lib.Typedtree.show_tstatements te)
+;;
+
 (** Infer tests *)
 
 (** Constants  tests *)
 
-let%expect_test _ =
+(* let%expect_test _ =
   let open Jaml_lib.Ast in
   let _ =
     let e = EConst (CInt 4) in
@@ -1437,4 +1444,283 @@ let%expect_test _ =
             ))
         ))
     )) |}]
+;; *)
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELetRec
+          ( "fix"
+          , EFun
+              ( PVar "f"
+              , EFun
+                  (PVar "x", EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "x"))
+              ) )
+      ; ELet
+          ( PVar "fac"
+          , EFun
+              ( PVar "self"
+              , EFun
+                  ( PVar "n"
+                  , EFun
+                      ( PVar "k"
+                      , EIfThenElse
+                          ( EBinop (Lt, EVar "n", EConst (CInt 2))
+                          , EApp (EVar "k", EConst (CInt 1))
+                          , EApp
+                              ( EApp (EVar "self", EBinop (Sub, EVar "n", EConst (CInt 1)))
+                              , EFun
+                                  ( PVar "a"
+                                  , EApp (EVar "k", EBinop (Mul, EVar "n", EVar "a")) ) )
+                          ) ) ) ) )
+      ; ELet (PVar "fac", EFun (PVar "a", EApp (EApp (EVar "fix", EVar "fac"), EVar "a")))
+        (* ; ELet
+           (PVar "z", EApp (EApp (EVar "fac", EConst (CInt 5)), EFun (PVar "a", EVar "a"))) *)
+      ]
+    in
+    infer Disable e |> run_infer_statements
+  in
+  [%expect
+    {|
+    (TLetRec(
+        fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)),
+        (TFun: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)) (
+            f: (('a -> 'b) -> ('a -> 'b)),
+            (TFun: ('a -> 'b) (
+                x: 'a,
+                (TApp: 'b (
+                    (TApp: ('a -> 'b) (
+                        (f: (('a -> 'b) -> ('a -> 'b))),
+                        (TApp: ('a -> 'b) (
+                            (fix: ((('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b))),
+                            (f: (('a -> 'b) -> ('a -> 'b)))
+                        ))
+                    )),
+                    (x: 'a)
+                ))
+            ))
+        ))
+    ));
+    (TLet(
+        fac: ((Int -> ((Int -> 'a) -> 'a)) -> (Int -> ((Int -> 'a) -> 'a))),
+        (TFun: ((Int -> ((Int -> 'a) -> 'a)) -> (Int -> ((Int -> 'a) -> 'a))) (
+            self: (Int -> ((Int -> 'a) -> 'a)),
+            (TFun: (Int -> ((Int -> 'a) -> 'a)) (
+                n: Int,
+                (TFun: ((Int -> 'a) -> 'a) (
+                    k: (Int -> 'a),
+                    (TIfThenElse: 'a
+                        ((Lt: (Int -> (Int -> Bool)) (
+                            (n: Int),
+                            (TConst((CInt 2): Int))
+                        )),
+                        (TApp: 'a (
+                            (k: (Int -> 'a)),
+                            (TConst((CInt 1): Int))
+                        )),
+                        (TApp: 'a (
+                            (TApp: ((Int -> 'a) -> 'a) (
+                                (self: (Int -> ((Int -> 'a) -> 'a))),
+                                (Sub: (Int -> (Int -> Int)) (
+                                    (n: Int),
+                                    (TConst((CInt 1): Int))
+                                ))
+                            )),
+                            (TFun: (Int -> 'a) (
+                                a: Int,
+                                (TApp: 'a (
+                                    (k: (Int -> 'a)),
+                                    (Mul: (Int -> (Int -> Int)) (
+                                        (n: Int),
+                                        (a: Int)
+                                    ))
+                                ))
+                            ))
+                        ))
+                    ))
+                ))
+            ))
+        ))
+    ));
+    (TLet(
+        fac: ('a -> ('a -> ('a -> 'd))),
+        (TFun: ('a -> ('a -> 'd)) (
+            a: 'a,
+            (TApp: ('a -> 'd) (
+                (TApp: ('a -> ('a -> 'd)) (
+                    (fix: (('a -> ('a -> ('a -> 'd))) -> ('a -> ('a -> 'd)))),
+                    (fac: ('a -> ('a -> ('a -> 'd))))
+                )),
+                (a: 'a)
+            ))
+        ))
+    ))
+    |}]
+;;
+
+let%expect_test _ =
+  let open Jaml_lib.Ast in
+  let _ =
+    let e =
+      [ ELetRec
+          ( "fix"
+          , EFun
+              ( PVar "f"
+              , EFun
+                  (PVar "x", EApp (EApp (EVar "f", EApp (EVar "fix", EVar "f")), EVar "x"))
+              ) )
+      ; ELet
+          ( PVar "fac"
+          , EFun
+              ( PVar "self"
+              , EFun
+                  ( PVar "n"
+                  , EFun
+                      ( PVar "k"
+                      , EIfThenElse
+                          ( EBinop (Lt, EVar "n", EConst (CInt 2))
+                          , EApp (EVar "k", EConst (CInt 1))
+                          , EApp
+                              ( EApp (EVar "self", EBinop (Sub, EVar "n", EConst (CInt 1)))
+                              , EFun
+                                  ( PVar "a"
+                                  , EApp (EVar "k", EBinop (Mul, EVar "n", EVar "a")) ) )
+                          ) ) ) ) )
+      ; ELet (PVar "fac", EFun (PVar "a", EApp (EApp (EVar "fix", EVar "fac"), EVar "a")))
+        (*; ELet
+          (PVar "z", EApp (EApp (EVar "fac", EConst (CInt 5)), EFun (PVar "a", EVar "a"))) *)
+      ]
+    in
+    infer Disable e |> run_infer_statements2
+  in
+  [%expect
+    {|
+    [(TLetRec (
+        ("fix",
+         (Arrow (
+            (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+               (Arrow ((Tyvar 2), (Tyvar 5))))),
+            (Arrow ((Tyvar 2), (Tyvar 5)))))),
+        (TFun (
+           (TPVar ("f",
+              (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                 (Arrow ((Tyvar 2), (Tyvar 5)))))
+              )),
+           (TFun ((TPVar ("x", (Tyvar 2))),
+              (TApp (
+                 (TApp (
+                    (TVar ("f",
+                       (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                          (Arrow ((Tyvar 2), (Tyvar 5)))))
+                       )),
+                    (TApp (
+                       (TVar ("fix",
+                          (Arrow (
+                             (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                                (Arrow ((Tyvar 2), (Tyvar 5))))),
+                             (Arrow ((Tyvar 2), (Tyvar 5)))))
+                          )),
+                       (TVar ("f",
+                          (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                             (Arrow ((Tyvar 2), (Tyvar 5)))))
+                          )),
+                       (Arrow ((Tyvar 2), (Tyvar 5))))),
+                    (Arrow ((Tyvar 2), (Tyvar 5))))),
+                 (TVar ("x", (Tyvar 2))), (Tyvar 5))),
+              (Arrow ((Tyvar 2), (Tyvar 5))))),
+           (Arrow (
+              (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                 (Arrow ((Tyvar 2), (Tyvar 5))))),
+              (Arrow ((Tyvar 2), (Tyvar 5)))))
+           ))
+        ));
+      (TLet (
+         (TPVar ("fac",
+            (Arrow (
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14))))),
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               ))
+            )),
+         (TFun (
+            (TPVar ("self",
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               )),
+            (TFun ((TPVar ("n", (Prim Int))),
+               (TFun ((TPVar ("k", (Arrow ((Prim Int), (Tyvar 14))))),
+                  (TIfThenElse (
+                     (TBinop (
+                        (<,
+                         (Arrow ((Prim Int), (Arrow ((Prim Int), (Prim Bool)))))),
+                        (TVar ("n", (Prim Int))), (TConst (2, (Prim Int))))),
+                     (TApp ((TVar ("k", (Arrow ((Prim Int), (Tyvar 14))))),
+                        (TConst (1, (Prim Int))), (Tyvar 14))),
+                     (TApp (
+                        (TApp (
+                           (TVar ("self",
+                              (Arrow ((Prim Int),
+                                 (Arrow ((Arrow ((Prim Int), (Tyvar 14))),
+                                    (Tyvar 14)))
+                                 ))
+                              )),
+                           (TBinop (
+                              (-,
+                               (Arrow ((Prim Int),
+                                  (Arrow ((Prim Int), (Prim Int)))))),
+                              (TVar ("n", (Prim Int))), (TConst (1, (Prim Int)))
+                              )),
+                           (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))
+                           )),
+                        (TFun ((TPVar ("a", (Prim Int))),
+                           (TApp ((TVar ("k", (Arrow ((Prim Int), (Tyvar 14))))),
+                              (TBinop (
+                                 (*,
+                                  (Arrow ((Prim Int),
+                                     (Arrow ((Prim Int), (Prim Int)))))),
+                                 (TVar ("n", (Prim Int))),
+                                 (TVar ("a", (Prim Int))))),
+                              (Tyvar 14))),
+                           (Arrow ((Prim Int), (Tyvar 14))))),
+                        (Tyvar 14))),
+                     (Tyvar 14))),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14))))),
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               )),
+            (Arrow (
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14))))),
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               ))
+            ))
+         ));
+      (TLet (
+         (TPVar ("fac",
+            (Arrow ((Tyvar 17),
+               (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+            )),
+         (TFun ((TPVar ("a", (Tyvar 17))),
+            (TApp (
+               (TApp (
+                  (TVar ("fix",
+                     (Arrow (
+                        (Arrow ((Tyvar 17),
+                           (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))
+                           )),
+                        (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+                     )),
+                  (TVar ("fac",
+                     (Arrow ((Tyvar 17),
+                        (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+                     )),
+                  (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22))))))),
+               (TVar ("a", (Tyvar 17))), (Arrow ((Tyvar 17), (Tyvar 22))))),
+            (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+         ))
+      ]
+    |}]
 ;;

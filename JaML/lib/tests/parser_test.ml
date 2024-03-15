@@ -503,3 +503,52 @@ let%expect_test _ =
       ]
    |}]
 ;;
+
+let%expect_test _ =
+  interpret_parse
+    show_statements
+    statements_p
+    "let rec fix f x = f (fix f) x\n\
+     let fac self n k = if n < 2 then k 1 else self (n - 1) (fun a -> k (n * a))\n\
+     let fac a = fix fac a\n\
+     let z = fac 5 (fun a -> a)";
+  [%expect
+    {|
+    [(ELetRec ("fix",
+        (EFun ((PVar "f"),
+           (EFun ((PVar "x"),
+              (EApp ((EApp ((EVar "f"), (EApp ((EVar "fix"), (EVar "f"))))),
+                 (EVar "x")))
+              ))
+           ))
+        ));
+      (ELet ((PVar "fac"),
+         (EFun ((PVar "self"),
+            (EFun ((PVar "n"),
+               (EFun ((PVar "k"),
+                  (EIfThenElse ((EBinop (Lt, (EVar "n"), (EConst (CInt 2)))),
+                     (EApp ((EVar "k"), (EConst (CInt 1)))),
+                     (EApp (
+                        (EApp ((EVar "self"),
+                           (EBinop (Sub, (EVar "n"), (EConst (CInt 1)))))),
+                        (EFun ((PVar "a"),
+                           (EApp ((EVar "k"),
+                              (EBinop (Mul, (EVar "n"), (EVar "a")))))
+                           ))
+                        ))
+                     ))
+                  ))
+               ))
+            ))
+         ));
+      (ELet ((PVar "fac"),
+         (EFun ((PVar "a"),
+            (EApp ((EApp ((EVar "fix"), (EVar "fac"))), (EVar "a")))))
+         ));
+      (ELet ((PVar "z"),
+         (EApp ((EApp ((EVar "fac"), (EConst (CInt 5)))),
+            (EFun ((PVar "a"), (EVar "a")))))
+         ))
+      ]
+   |}]
+;;

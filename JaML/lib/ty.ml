@@ -6,12 +6,12 @@
 type prim =
   | Int (** Integer type *)
   | Bool (** Boolean type *)
-[@@deriving eq]
+[@@deriving eq, show { with_path = false }]
 
-let show_prim = function
-  | Int -> "int"
-  | Bool -> "bool"
-;;
+(* let show_prim = function
+   | Int -> "int"
+   | Bool -> "bool"
+   ;; *)
 
 let pp_prim ppf prim = Stdlib.Format.fprintf ppf "%s" (show_prim prim)
 
@@ -21,7 +21,7 @@ type ty =
   | Prim of prim (** Ground types *)
   | Arrow of ty * ty (** Type for function *)
   | Tuple of ty list (** Type for tuples *)
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 (* Constructors for ground types *)
 let tyint = Prim Int

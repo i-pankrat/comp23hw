@@ -1,0 +1,4 @@
+let rec fix f x = f (fix f) x
+let fac self n k = if n < 2 then k 1 else self (n - 1) (fun a -> k (n * a))
+let fac a = fix fac a
+let z = fac 5 (fun a -> a)

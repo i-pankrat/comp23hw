@@ -9,9 +9,10 @@ type tpattern =
   | TPVar of string * Ty.ty
   | TPWildcard of Ty.ty
   | TPTuple of tpattern list * Ty.ty
+[@@deriving eq, show { with_path = false }]
 
-type typed_name = string * Ty.ty
-type typed_binop = bin_op * Ty.ty
+type typed_name = string * Ty.ty [@@deriving eq, show { with_path = false }]
+type typed_binop = bin_op * Ty.ty [@@deriving eq, show { with_path = false }]
 
 (** Typed expression type *)
 type texpr =
@@ -28,14 +29,16 @@ type texpr =
   (** Typed expression for let rec in declaration *)
   | TFun of tpattern * texpr * Ty.ty (** Typed expression for function *)
   | TTuple of texpr list * Ty.ty (** Typed expression for the tuples *)
+[@@deriving eq, show { with_path = false }]
 
 (** Typed binding type *)
 type tbinding =
   | TLet of tpattern * texpr (** Typed expression for let declaration *)
   | TLetRec of typed_name * texpr (** Typed expression for let rec declaration *)
+[@@deriving eq, show { with_path = false }]
 
 (** Typed statements type *)
-type tstatements = tbinding list
+type tstatements = tbinding list [@@deriving eq, show { with_path = false }]
 
 (** Constructors for typed expressions *)
 

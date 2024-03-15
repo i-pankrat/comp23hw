@@ -10,9 +10,14 @@ type tpattern =
   | TPVar of string * ty
   | TPWildcard of ty
   | TPTuple of tpattern list * ty
+[@@deriving eq, show { with_path = false }]
 
 type typed_name = string * ty (** Typed function name *)
+[@@deriving eq, show { with_path = false }]
+
 type typed_binop = bin_op * ty (** Typed sign of a binary operation *)
+[@@deriving eq, show { with_path = false }]
+
 
 (** Typed expression type *)
 type texpr =
@@ -29,14 +34,20 @@ type texpr =
   (** Typed expression for let rec in declaration *)
   | TFun of tpattern * texpr * ty (** Typed expression for function *)
   | TTuple of texpr list * ty (** Typed expression for the tuples *)
+[@@deriving eq, show { with_path = false }]
+
 
 (** Typed binding type *)
 type tbinding =
   | TLet of tpattern * texpr (** Typed expression for let declaration *)
   | TLetRec of typed_name * texpr (** Typed expression for let rec declaration *)
+[@@deriving eq, show { with_path = false }]
+
 
 (** Typed statements type *)
 type tstatements = tbinding list
+[@@deriving eq, show { with_path = false }]
+
 
 (** Typed texpr constructors *)
 

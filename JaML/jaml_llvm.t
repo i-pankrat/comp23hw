@@ -250,14 +250,13 @@ Show help
   > EOF
   69
 
-  $ cat > test.ml <<- EOF
-  > let rec fix = fun f -> (fun x -> f (fix f) x)
-  > let fac = fun self -> (fun n -> (fun k ->
-  >   if n<2 then k 1 else self (n-1) (fun a -> k (n*a))))
-  > let fac = (fun a -> fix fac a)
-  > let z = fac 5 (fun a -> a)
-  > EOF
-  $ ocaml test.ml
-  $ cat test.ml | nl -ba
-  $ cat test.ml | time ./jaml.exe -ll
-
+$ cat > test.ml <<- EOF
+> let rec fix = fun f -> (fun x -> f (fix f) x)
+> let fac = fun self -> (fun n -> (fun k ->
+>   if n<2 then k 1 else self (n-1) (fun a -> k (n*a))))
+> let fac = (fun a -> fix fac a)
+> let z = fac 5 (fun a -> a)
+> EOF
+$ ocaml test.ml
+$ cat test.ml | nl -ba
+$ cat test.ml | time ./jaml.exe -ll -d

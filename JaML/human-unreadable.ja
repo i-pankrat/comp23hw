@@ -1,0 +1,126 @@
+   [(TLetRec (
+        ("fix",
+         (Arrow (
+            (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+               (Arrow ((Tyvar 2), (Tyvar 5))))),
+            (Arrow ((Tyvar 2), (Tyvar 5)))))),
+        (TFun (
+           (TPVar ("f",
+              (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                 (Arrow ((Tyvar 2), (Tyvar 5)))))
+              )),
+           (TFun ((TPVar ("x", (Tyvar 2))),
+              (TApp (
+                 (TApp (
+                    (TVar ("f",
+                       (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                          (Arrow ((Tyvar 2), (Tyvar 5)))))
+                       )),
+                    (TApp (
+                       (TVar ("fix",
+                          (Arrow (
+                             (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                                (Arrow ((Tyvar 2), (Tyvar 5))))),
+                             (Arrow ((Tyvar 2), (Tyvar 5)))))
+                          )),
+                       (TVar ("f",
+                          (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                             (Arrow ((Tyvar 2), (Tyvar 5)))))
+                          )),
+                       (Arrow ((Tyvar 2), (Tyvar 5))))),
+                    (Arrow ((Tyvar 2), (Tyvar 5))))),
+                 (TVar ("x", (Tyvar 2))), (Tyvar 5))),
+              (Arrow ((Tyvar 2), (Tyvar 5))))),
+           (Arrow (
+              (Arrow ((Arrow ((Tyvar 2), (Tyvar 5))),
+                 (Arrow ((Tyvar 2), (Tyvar 5))))),
+              (Arrow ((Tyvar 2), (Tyvar 5)))))
+           ))
+        ));
+      (TLet (
+         (TPVar ("fac",
+            (Arrow (
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14))))),
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               ))
+            )),
+         (TFun (
+            (TPVar ("self",
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               )),
+            (TFun ((TPVar ("n", (Prim Int))),
+               (TFun ((TPVar ("k", (Arrow ((Prim Int), (Tyvar 14))))),
+                  (TIfThenElse (
+                     (TBinop (
+                        (<,
+                         (Arrow ((Prim Int), (Arrow ((Prim Int), (Prim Bool)))))),
+                        (TVar ("n", (Prim Int))), (TConst (2, (Prim Int))))),
+                     (TApp ((TVar ("k", (Arrow ((Prim Int), (Tyvar 14))))),
+                        (TConst (1, (Prim Int))), (Tyvar 14))),
+                     (TApp (
+                        (TApp (
+                           (TVar ("self",
+                              (Arrow ((Prim Int),
+                                 (Arrow ((Arrow ((Prim Int), (Tyvar 14))),
+                                    (Tyvar 14)))
+                                 ))
+                              )),
+                           (TBinop (
+                              (-,
+                               (Arrow ((Prim Int),
+                                  (Arrow ((Prim Int), (Prim Int)))))),
+                              (TVar ("n", (Prim Int))), (TConst (1, (Prim Int)))
+                              )),
+                           (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))
+                           )),
+                        (TFun ((TPVar ("a", (Prim Int))),
+                           (TApp ((TVar ("k", (Arrow ((Prim Int), (Tyvar 14))))),
+                              (TBinop (
+                                 (*,
+                                  (Arrow ((Prim Int),
+                                     (Arrow ((Prim Int), (Prim Int)))))),
+                                 (TVar ("n", (Prim Int))),
+                                 (TVar ("a", (Prim Int))))),
+                              (Tyvar 14))),
+                           (Arrow ((Prim Int), (Tyvar 14))))),
+                        (Tyvar 14))),
+                     (Tyvar 14))),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14))))),
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               )),
+            (Arrow (
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14))))),
+               (Arrow ((Prim Int),
+                  (Arrow ((Arrow ((Prim Int), (Tyvar 14))), (Tyvar 14)))))
+               ))
+            ))
+         ));
+      (TLet (
+         (TPVar ("fac",
+            (Arrow ((Tyvar 17),
+               (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+            )),
+         (TFun ((TPVar ("a", (Tyvar 17))),
+            (TApp (
+               (TApp (
+                  (TVar ("fix",
+                     (Arrow (
+                        (Arrow ((Tyvar 17),
+                           (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))
+                           )),
+                        (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+                     )),
+                  (TVar ("fac",
+                     (Arrow ((Tyvar 17),
+                        (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+                     )),
+                  (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22))))))),
+               (TVar ("a", (Tyvar 17))), (Arrow ((Tyvar 17), (Tyvar 22))))),
+            (Arrow ((Tyvar 17), (Arrow ((Tyvar 17), (Tyvar 22)))))))
+         ))
+      ]

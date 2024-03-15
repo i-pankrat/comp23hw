@@ -20,6 +20,7 @@
   ./tests/fibonacci.ja
   ./tests/combinators.ja
   ./tests/occurs-check-disable.ja
+  ./tests/kakadu.ja
   ./jaml.exe
   %{bin:jaml}
   lib/jaml-runtime.so))

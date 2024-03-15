@@ -6,9 +6,9 @@
 type prim =
   | Int (** Integer type *)
   | Bool (** Boolean type *)
-[@@deriving eq]
+[@@deriving eq, show { with_path = false }]
 
-val show_prim : prim -> string
+(* val show_prim : prim -> string *)
 val pp_prim : Format.formatter -> prim -> unit
 
 (** Types for expression *)
@@ -17,6 +17,7 @@ type ty =
   | Prim of prim (** Ground types *)
   | Arrow of ty * ty (** Type for function *)
   | Tuple of ty list (** Type for tuples *)
+[@@deriving eq, show { with_path = false }]
 
 val tyint : ty
 val tybool : ty

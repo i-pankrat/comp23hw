@@ -5,7 +5,7 @@
 type const =
   | CInt of int (** 1 2 3 *)
   | CBool of bool (** true, false *)
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 (** Binary operations type *)
 type bin_op =
@@ -22,13 +22,13 @@ type bin_op =
   | Lt
   | Gte
   | Lte
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 type pattern =
   | PVar of string
   | PWildcard
   | PTuple of pattern list
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 (** Expression type *)
 type expr =
@@ -45,17 +45,17 @@ type expr =
   | ELetRecIn of string * expr * expr
   (** An expression for let rec in declaration: let rec id = expr in expr *)
   | EFun of pattern * expr (** An expression for function: fun pattern -> expr *)
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 (** Binding type *)
 type bindings =
   | ELet of pattern * expr (** An expression for let declaration: let id = expr *)
   | ELetRec of string * expr
   (** An expression for let rec declaration: let rec id = expr *)
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 (** Statements type *)
-type statements = bindings list [@@deriving show { with_path = false }]
+type statements = bindings list [@@deriving eq, show { with_path = false }]
 
 let pp_bin_op ppf =
   let open Stdlib.Format in

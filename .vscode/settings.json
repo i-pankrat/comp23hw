@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "stdint.h": "c",
+        "stdarg.h": "c",
+        "tuple": "c",
+        "stdlib.h": "c",
+        "inttypes.h": "c",
+        "cstdarg": "c"
+    }
+}
