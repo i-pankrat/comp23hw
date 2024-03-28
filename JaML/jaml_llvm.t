@@ -97,7 +97,7 @@ Show help
   5
 
   $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
-  > let fib n =
+  > let rec fib n =
   > if n < 3 then 1 else fib (n - 1) + fib (n - 2)
   > let main = print_int (fib 6)
   > EOF
@@ -260,4 +260,3 @@ Show help
   $ ocaml test.ml
   $ cat test.ml | nl -ba
   $ cat test.ml | time ./jaml.exe -ll
-
