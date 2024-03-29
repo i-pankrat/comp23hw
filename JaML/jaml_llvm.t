@@ -250,13 +250,27 @@ Show help
   > EOF
   69
 
-  $ cat > test.ml <<- EOF
+  $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
+  > let apply20 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 a16 a17 a18 a19 a20 =
+  >   a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16 + a17 + a18 + a19 + a20
+  > let main = print_int (apply20 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20)
+  > EOF
+  210
+
+  $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
   > let rec fix = fun f -> (fun x -> f (fix f) x)
   > let fac = fun self -> (fun n -> (fun k ->
   >   if n<2 then k 1 else self (n-1) (fun a -> k (n*a))))
-  > let fac = (fun a -> fix fac a)
-  > let z = fac 5 (fun a -> a)
+  > let second_f = (fun a -> fix fac a)
+  > let main = print_int (second_f 5 (fun a -> a))
   > EOF
-  $ ocaml test.ml
-  $ cat test.ml | nl -ba
-  $ cat test.ml | time ./jaml.exe -ll
+  120
+
+  $ ./jaml.exe -ll <<- EOF | lli-16 -load lib/jaml-runtime.so
+  > let rec fix = fun f -> (fun x -> f (fix f) x)
+  > let fib_cps self n cont = if n <= 1 then cont n else self (n-1) (fun k -> self (n-2) (fun m -> cont (k + m)))
+  > let fib_cps_second = fix fib_cps
+  > let fib n = fib_cps_second n (fun x -> x)
+  > let main = print_int (fib 8)
+  > EOF
+  21

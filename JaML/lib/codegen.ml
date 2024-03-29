@@ -64,14 +64,19 @@ let rec codegen_cexpr = function
   | CImmExpr imm -> codegen_imm imm
   | CApp (callee, args) ->
     let callee = codegen_imm callee in
-    let args, args_types =
-      List.fold
-        ~f:(fun (args, types) arg -> codegen_imm arg :: args, i64 :: types)
-        ~init:([], [])
-        args
-    in
-    let fnty = function_type i64 (rev args_types) in
-    build_call fnty callee (rev args) "apply_n" builder
+    if List.is_empty args
+    then (
+      let fnty = function_type i64 [||] in
+      build_call fnty callee [||] "empty_call" builder)
+    else (
+      let args, args_types =
+        List.fold
+          ~f:(fun (args, types) arg -> codegen_imm arg :: args, i64 :: types)
+          ~init:([], [])
+          args
+      in
+      let fnty = function_type i64 (rev args_types) in
+      build_call fnty callee (rev args) "apply_n" builder)
   | CMakeClosure (callee, max_args, app_args, args) ->
     let callee = codegen_imm callee in
     let args = codegen_imm_args args in
