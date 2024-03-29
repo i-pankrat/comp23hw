@@ -124,25 +124,49 @@ uint64_t make_pa(uint64_t f_ptr, uint64_t max_args, uint64_t n, ...)
     return (uint64_t)partial;
 }
 
+uint64_t cp_pa(uint64_t pa_app)
+{
+    pa *partial = (pa *)pa_app;
+    uint64_t *args = (uint64_t *)malloc(partial->max_args_n * sizeof(uint64_t));
+
+    for (uint64_t i = 0; i < partial->curr_args_n; i++) {
+        args[i] = partial->args[i];
+    }
+
+    pa *cp_of_pa = (pa *)malloc(sizeof(pa));
+    cp_of_pa->args = args;
+    cp_of_pa->func_ptr = partial->func_ptr;
+    cp_of_pa->curr_args_n = partial->curr_args_n;
+    cp_of_pa->max_args_n = partial->max_args_n;
+    return (uint64_t)cp_of_pa;
+}
+
+
 /*
     When function returns function in JaML, that function should be
     returned as pointer to a closure to which zero arguments is applied.
 */
 uint64_t add_args_to_pa(uint64_t partial_app, uint64_t n, ...)
 {
-
-    pa *partial = (pa *)partial_app;
+    int applied = 0;
+    pa *partial = (pa *)cp_pa(partial_app);
     va_list vl;
     va_start(vl, n);
 
     for (uint64_t i = 0; i < n; i++)
     {
+        if (applied) {
+            partial = (pa *)cp_pa((uint64_t)partial);
+            applied = 0;
+        }
+
         partial->args[partial->curr_args_n++] = va_arg(vl, uint64_t);
 
         if (partial->curr_args_n == partial->max_args_n)
         {
             uint64_t (*valid_ptr)(uint64_t, ...) = (uint64_t(*)(uint64_t, ...))partial->func_ptr;
             uint64_t tmp = apply_n(valid_ptr, partial->max_args_n, partial->args);
+            applied = 1;
 
             // We can't release partial application here, because if it's used twice,
             // we'll get undefined behavior.
